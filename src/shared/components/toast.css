@@ -1,0 +1,45 @@
+/* --------------------------------------------------------------------------
+   FLOATING GLOBAL TOAST NOTIFIER (Dynamic Island Drop Under Glass Navbar)
+   -------------------------------------------------------------------------- */
+.toast-host {
+  position: fixed;
+  top: calc(var(--nav-h) + 0.9rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 260;
+  pointer-events: none;
+  padding: 0 1rem;
+  max-width: calc(100vw - 2rem);
+}
+
+.toast-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.56rem 1rem 0.56rem 0.7rem;
+  background: rgba(7, 12, 24, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(242, 163, 58, 0.55);
+  border-radius: var(--r-pill);
+  color: var(--ink-light);
+  font-size: 0.76rem;
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.82), 0 0 0 1px rgba(242, 163, 58, 0.14);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--saffron);
+  color: #090e1a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+

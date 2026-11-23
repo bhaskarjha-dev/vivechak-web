@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vivechak.bhaskarjha.dev/sitemap.xml
+# LLM & AI Agent index: https://vivechak.bhaskarjha.dev/llms.txt

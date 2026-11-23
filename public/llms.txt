@@ -1,0 +1,56 @@
+# Vivechak (vck) — Sift Truth Before Code
+
+> Local-first Go MCP server and CLI for evidence-graded technical research, adversarial red-teaming, and mechanical Phase 0 exit gates in plain Git Markdown.
+
+## Overview
+Vivechak prevents AI coding agents from making irreversible architectural decisions based on unverified training recall. It writes strictly inside `research/` as diffable YAML-frontmattered Markdown — zero hidden databases, zero cloud accounts, zero telemetry, zero outbound LLM calls.
+
+- **Website:** https://vivechak.bhaskarjha.dev
+- **Repository:** https://github.com/bhaskarjha-dev/vivechak
+- **License:** MIT
+- **Version:** v0.1.0
+- **Binary Aliases:** `vck`, `vivechak`
+
+## Three Scopes (Reversibility-Calibrated Rigor)
+1. **Comparison (`C-NNN`):** 2–5 bounded options → Weighted Evaluation Protocol (WEP) matrix with ±20% sensitivity check in 1 session (~5 min). Zero DAG, zero gate.
+2. **Decision (`D-NNN`):** Architectural fork or migration in an active codebase → R/N/B/X risk profiler, 1–3 sessions, locked ADR (`research/D-NNN-decision.md`), red-team challenge (`D-NNN-R1.md`), interactive human TTY sign-off.
+3. **Project (`FAD`):** Greenfield architecture or major rewrite → Constrained topological DAG (`RESEARCH-PIPELINE.md`) with Terminal Synthesis Sink Guard (`SYN-01`), Founding Architecture Document (`FAD.md`), and full G1–G12 Phase 0 Exit Gate.
+4. **Out of Scope:** Routine bug fixes, functions, refactors, syntax questions — skip Vivechak and write code directly.
+
+## Quick Install
+- **macOS / Linux:** `curl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh`
+- **Homebrew:** `brew install --cask bhaskarjha-dev/tap/vivechak`
+- **npx:** `npx -y vivechak serve`
+- **uvx:** `uvx vck serve`
+- **Windows:** `irm https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.ps1 | iex`
+- **Go:** `go install github.com/bhaskarjha-dev/vivechak/cmd/vivechak@latest`
+
+## Verified MCP Host Setup (10 Presets)
+Run `vck setup <host>` (`cursor`, `claude-code`, `vscode`, `claude`, `agy`, `zed`, `windsurf`, `opencode`, `roo`, `goose`) with `--dry-run` preview and timestamped backups.
+
+## MCP Protocol Surface
+- **9 Tools:** `vivechak_start`, `vivechak_save`, `vivechak_record_decision`, `vivechak_next`, `vivechak_status`, `vivechak_review`, `vivechak_amend`, `vivechak_replan`, `vivechak_gate`
+- **4 Prompts:** `/compare`, `/decision`, `/project`, `/gate`
+- **8 Read-Only Resources:** `vivechak://templates/{decisions,comparison,fad,conflict-resolution,gate,session}`, `vivechak://methodology/{grades,principles}`
+
+## Security & Confinement
+- Go 1.26 `os.Root` path confinement strictly to `research/`.
+- 7-step fail-closed workspace resolution ladder (refuses `/`, `$HOME`, and OS program directories).
+- `E-HUMAN-ONLY-FIELD` blocks agents from self-attesting One-Way Door ADRs; interactive `/dev/tty` `vck signoff` binds SHA-256 `reviewed_hash` and `decision_hash`.
+- CI merge gate: `vck doctor && vck gate --track all` exits `1` on Track A/B failures.
+
+## Canonical On-Site Documentation & Interactive Tools
+- Full Combined Manual (Single File for LLMs): https://vivechak.bhaskarjha.dev/llms-full.txt
+- Overview & Interactive Gate: https://vivechak.bhaskarjha.dev/
+- In-Browser ADR Auditor, WEP Builder & Prompt Studio: https://vivechak.bhaskarjha.dev/playground
+- Quickstart (5 Minutes): https://vivechak.bhaskarjha.dev/docs/quickstart
+- Three Scopes & R/N/B/X: https://vivechak.bhaskarjha.dev/docs/scopes
+- 10 Verified MCP Hosts: https://vivechak.bhaskarjha.dev/docs/hosts
+- Zero-Install Manual Mode: https://vivechak.bhaskarjha.dev/docs/manual-workflow
+- Hybrid & Parallel Subagents: https://vivechak.bhaskarjha.dev/docs/hybrid-parallel
+- Real Adoption Walkthroughs: https://vivechak.bhaskarjha.dev/docs/examples
+- CLI Commands & CI Gates: https://vivechak.bhaskarjha.dev/docs/cli
+- MCP Tools, Prompts & Resources: https://vivechak.bhaskarjha.dev/docs/mcp-reference
+- Phase 0 Exit Gate (G1–G12): https://vivechak.bhaskarjha.dev/docs/gate-rules
+- Diagnostic & Quality Coach Codes: https://vivechak.bhaskarjha.dev/docs/codes
+- Methodology, 8 Principles & Security: https://vivechak.bhaskarjha.dev/docs/methodology

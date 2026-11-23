@@ -1,0 +1,85 @@
+   COLOPHON FOOTER (MINIMAL & TIMELESS)
+   -------------------------------------------------------------------------- */
+.colophon-footer {
+  background: var(--void);
+  border-top: 1px solid var(--border-dark);
+  padding: 3.25rem 0 2.25rem;
+}
+
+.colophon-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.75rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.colophon-id {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.colophon-lockup-line {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.2rem;
+}
+
+.colophon-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  font-size: 1.32rem;
+  line-height: 1;
+}
+
+.colophon-wm {
+  height: 17px;
+  width: auto;
+}
+
+.colophon-etym {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.colophon-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.15rem 1.45rem;
+}
+
+.colophon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  transition: color 0.15s ease;
+}
+
+.colophon-link:hover {
+  color: var(--saffron-bright);
+}
+
+.colophon-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.colophon-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-top: 1.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+}
+

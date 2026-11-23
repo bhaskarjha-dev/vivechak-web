@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vivechak &#x2014; Sift Truth Before Code</title>
+    <meta
+      name="description"
+      content="Make AI coding agents prove hard architectural decisions with cited research (Grade A-E), red-team SHA-256 checks, and human sign-off — stored locally in plain Git Markdown."
+    />
+    <meta
+      name="keywords"
+      content="Vivechak, vck, MCP server, Model Context Protocol, AI coding agents, architectural decision records, ADR, Cursor MCP, Claude Code MCP, Phase 0 gate, evidence grading, Go CLI"
+    />
+    <meta name="author" content="Bhaskar Jha" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="theme-color" content="#050811" />
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem('vck_theme');
+          var t = s === 'light' || s === 'dark'
+            ? s
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          document.documentElement.dataset.theme = t;
+          document.documentElement.style.colorScheme = t;
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', t === 'light' ? '#F4F0E6' : '#050811');
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+    <link rel="canonical" href="https://vivechak.bhaskarjha.dev/" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Official Brand Marks (BRAND.md §5) -->
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="icon" href="/assets/logo.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/assets/logo-dark.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="preload" as="image" href="/assets/logo-dark.svg" />
+
+    <!-- OpenGraph / Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Vivechak" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://vivechak.bhaskarjha.dev/" />
+    <meta property="og:title" content="Vivechak &#x2014; Sift Truth Before Code" />
+    <meta
+      property="og:description"
+      content="Make AI coding agents prove hard architectural decisions with cited research, red-team SHA-256 checks, and human sign-off in plain Git Markdown."
+    />
+    <meta property="og:image" content="https://vivechak.bhaskarjha.dev/assets/social-preview.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="Vivechak — Epistemic Grounding Engine for AI coding agents across Comparison, Decision, and Project scopes" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Vivechak &#x2014; Sift Truth Before Code" />
+    <meta
+      name="twitter:description"
+      content="Local-first Go MCP server &amp; CLI for evidence-graded architecture research, weighted matrices, and Phase 0 exit gates in Git."
+    />
+    <meta name="twitter:image" content="https://vivechak.bhaskarjha.dev/assets/social-preview.png" />
+
+    <!-- Non-Render-Blocking Font Triad: Plus Jakarta Sans (Architectural Display) + Inter (Precision UI) + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+
+    <!-- Rich Structured Data Graph: SoftwareApplication + WebSite + HowTo + FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "Vivechak",
+            "url": "https://vivechak.bhaskarjha.dev/",
+            "description": "Local-first Go MCP server and CLI for evidence-graded technical architecture decisions in Git."
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Vivechak",
+            "alternateName": ["vck"],
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "macOS, Linux, Windows, FreeBSD",
+            "softwareVersion": "0.1.0",
+            "license": "https://opensource.org/licenses/MIT",
+            "url": "https://vivechak.bhaskarjha.dev/",
+            "downloadUrl": "https://github.com/bhaskarjha-dev/vivechak/releases",
+            "codeRepository": "https://github.com/bhaskarjha-dev/vivechak",
+            "programmingLanguage": "Go",
+            "description": "Local-first Model Context Protocol (MCP) server and CLI that structures evidence-graded research (A-E), adversarial red-teaming, and mechanical Phase 0 exit gates in plain Git Markdown.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "HowTo",
+            "name": "How to add Vivechak to your AI coding workflow",
+            "totalTime": "PT2M",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "name": "Install the static Go binary",
+                "text": "Run curl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh or brew install --cask bhaskarjha-dev/tap/vivechak."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Wire your MCP host",
+                "text": "Run vck setup cursor (or claude-code, vscode, zed, windsurf, opencode, roo, goose, agy) to safely merge configuration."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Gate irreversible architecture in Git and CI",
+                "text": "Research decisions into research/, sign off One-Way Doors via vck signoff D-001, and enforce with vck doctor && vck gate --track all."
+              }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "When should I NOT use Vivechak?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Skip Vivechak for routine coding, bug fixes, syntax questions, and local refactors. Invoke it only for hard-to-reverse choices like datastores, protocols, security boundaries, or greenfield system architecture."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Vivechak call external LLMs or send telemetry?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Vivechak is a ~9 MB local static Go binary with zero outbound network calls, zero telemetry, and zero hidden databases. Your existing AI coding agent performs research; Vivechak structures, validates, hashes, and gates the files inside research/."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does Vivechak stop AI agents from rubber-stamping decisions?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "One-Way Door ADRs require Grade A/B primary URL citations, documented rejected alternatives, a SHA-256 red-team challenge record (G10), and interactive human TTY attestation (G11). Agents attempting to set human_reviewed: true are rejected with E-HUMAN-ONLY-FIELD."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I try Vivechak without installing anything?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. You can run ephemerally via npx -y vivechak serve or uvx vck serve, or copy the self-contained zero-install generator prompt directly into Claude, ChatGPT, or Gemini web chat."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can Vivechak touch source files outside my research folder?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. File operations are jailed strictly inside research/ using Go 1.26 os.Root confinement and a 7-step fail-closed workspace resolution ladder that refuses /, $HOME, and OS program directories."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"><!--app-html--></div>
+    <script type="module" src="/src/app/main.tsx"></script>
+  </body>
+</html>

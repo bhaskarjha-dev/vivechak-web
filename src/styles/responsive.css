@@ -1,0 +1,150 @@
+/* --------------------------------------------------------------------------
+   RESPONSIVE BREAKPOINTS (Zero Horizontal Overflow Down to 390px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1040px) {
+  .nav-links,
+  .scroll-cue,
+  .desktop-only-inline,
+  .flow-connector {
+    display: none;
+  }
+
+  .logo-hero-stage {
+    width: min(100%, 310px);
+    justify-self: center;
+    margin: 0 auto;
+  }
+
+  .nav-icon-btn.nav-mobile-btn {
+    display: inline-flex;
+  }
+
+  .hero-prelude {
+    justify-content: center;
+    padding-right: 0;
+    opacity: 0.25;
+  }
+
+  .hero-main,
+  .flow-loop,
+  .shift-raw,
+  .rnbx-compact,
+  .wep-visual-race,
+  .gate-cockpit,
+  .ws-card,
+  .mcp-compact-grid,
+  .setup-split {
+    grid-template-columns: 1fr;
+  }
+
+  .ladder-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .raw-bubble {
+    border-right: none;
+    border-bottom: 1px solid var(--border-dark);
+  }
+
+  .gate-12-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .grades-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trust-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ws-sidebar,
+  .mcp-pill-col {
+    border-right: none;
+    border-bottom: 1px solid var(--border-dark);
+  }
+}
+
+@media (max-width: 720px) {
+  .spec-cols,
+  .adr-signal-grid,
+  .rnbx-mini-grid,
+  .proof-strip,
+  .tty-grid,
+  .trust-ribbon,
+  .grades-ribbon,
+  .ladder-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ladder-mini-card.is-stop {
+    grid-column: span 1;
+  }
+
+  .gate-12-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .shift-split-shell {
+    grid-template-columns: 1fr;
+    cursor: default;
+  }
+
+  .split-raw,
+  .split-with {
+    padding: 1.2rem 1.1rem;
+  }
+
+  .split-raw {
+    border-bottom: 2px solid var(--saffron);
+  }
+
+  .shift-curtain-blade {
+    display: none;
+  }
+
+  .hero-hosts-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .nav-sep,
+  .nav-devanagari,
+  .nav-devanagari.brand-for-light,
+  .nav-devanagari.brand-for-dark,
+  .nav-gh-btn,
+  .nav-docs-btn {
+    display: none;
+  }
+
+  .hero-top-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .dock-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .dock-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dock-code {
+    mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
+    padding-right: 1rem;
+  }
+
+  .palette-item {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .palette-hint { display: none; }
+}
