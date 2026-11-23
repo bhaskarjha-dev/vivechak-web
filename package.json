@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && vite build --ssr src/app/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && rm -rf dist-ssr",
+    "sync-docs": "node scripts/sync_docs.mjs",
+    "dev": "node scripts/sync_docs.mjs && vite",
+    "build": "node scripts/sync_docs.mjs && tsc -b && vite build && vite build --ssr src/app/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

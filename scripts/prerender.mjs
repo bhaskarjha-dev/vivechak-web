@@ -70,4 +70,10 @@ for (const meta of routes) {
 const llmsFull = renderLlmsFullText();
 fs.writeFileSync(path.join(distDir, 'llms-full.txt'), llmsFull, 'utf-8');
 
+// Cross-platform cleanup of dist-ssr directory
+const distSsrDir = path.join(root, 'dist-ssr');
+if (fs.existsSync(distSsrDir)) {
+  fs.rmSync(distSsrDir, { recursive: true, force: true });
+}
+
 console.log(`Prerendered ${routes.length} static SEO routes + llms-full.txt (${llmsFull.length} bytes) into dist/`);
