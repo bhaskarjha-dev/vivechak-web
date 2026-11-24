@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Cpu, FileCode2, GitBranch, Play } from 'lucide-react';
-import { DAG_NODES, EVIDENCE_GRADES, MCP_TOOLS, WORKSPACE_FILES } from '@/shared/data/vivechakData';
+import { DAG_NODES, EVIDENCE_GRADES, MCP_PROMPTS, MCP_RESOURCES, MCP_TOOLS, WORKSPACE_FILES } from '@/shared/data/vivechakData';
 import { copyText } from '@/shared/lib/clipboard';
 import { renderHighlightedCode } from '@/shared/lib/highlight';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
 
 type ArchTab = 'dag' | 'files' | 'mcp';
+type McpViewKind = 'tools' | 'prompts' | 'resources';
 
 const NODE_POS: Record<string, { x: number; y: number }> = {
   'T0-01': { x: 128, y: 184 },
@@ -39,6 +40,9 @@ export const ArchitectureStage: React.FC = () => {
   const [activeDagId, setActiveDagId] = useState('SYN-01');
   const [activeFilePath, setActiveFilePath] = useState(WORKSPACE_FILES[1].path);
   const [activeToolName, setActiveToolName] = useState(MCP_TOOLS[0].name);
+  const [mcpKind, setMcpKind] = useState<'tools' | 'prompts' | 'resources'>('tools');
+  const [activePromptName, setActivePromptName] = useState(MCP_PROMPTS[0].name);
+  const [activeResourceUri, setActiveResourceUri] = useState(MCP_RESOURCES[0].uri);
   const [selectedGrade, setSelectedGrade] = useState<string>('A');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [swarmRunning, setSwarmRunning] = useState(false);
@@ -134,6 +138,8 @@ export const ArchitectureStage: React.FC = () => {
   const activeNode = liveNodes.find((n) => n.id === activeDagId) ?? liveNodes[0];
   const activeFile = WORKSPACE_FILES.find((f) => f.path === activeFilePath) ?? WORKSPACE_FILES[0];
   const activeTool = MCP_TOOLS.find((t) => t.name === activeToolName) ?? MCP_TOOLS[0];
+  const activePrompt = MCP_PROMPTS.find((p) => p.name === activePromptName) ?? MCP_PROMPTS[0];
+  const activeResource = MCP_RESOURCES.find((r) => r.uri === activeResourceUri) ?? MCP_RESOURCES[0];
   const activeGrade = EVIDENCE_GRADES.find((g) => g.grade === selectedGrade) ?? EVIDENCE_GRADES[0];
 
   const copySnippet = async (id: string, label: string, text: string) => {
@@ -410,44 +416,180 @@ export const ArchitectureStage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
           >
-              <div className="mcp-compact-grid">
-                <div className="mcp-pill-col" role="listbox" aria-label="9 MCP Tools">
-                  {MCP_TOOLS.map((t, idx) => (
+              <div className="mcp-triumvirate-bar">
+                <div className="mcp-triumvirate-pills" role="tablist" aria-label="MCP Protocol Triumvirate">
+                  {[
+                    { id: 'tools', label: '9 Tools', badge: 'High Cohesion' },
+                    { id: 'prompts', label: '4 Prompts', badge: 'Multi-Scope' },
+                    { id: 'resources', label: '8 Resources', badge: 'Templates & Cards' },
+                  ].map((item) => (
                     <button
-                      key={t.name}
+                      key={item.id}
                       type="button"
-                      role="option"
-                      aria-selected={t.name === activeToolName}
-                      className={`mcp-tool-btn mono ${t.name === activeToolName ? 'active' : ''}`}
+                      role="tab"
+                      aria-selected={mcpKind === item.id}
+                      className={`mcp-kind-btn mono ${mcpKind === item.id ? 'active' : ''}`}
                       onClick={() => {
-                        soundEngine.playTick(700 + idx * 18);
-                        setActiveToolName(t.name);
+                        soundEngine.playTick(740);
+                        setMcpKind(item.id as McpViewKind);
                       }}
                     >
-                      <span>{t.name}</span>
-                      <span className={`rw-dot ${t.readOnly ? 'ro' : ''}`}>{t.readOnly ? 'RO' : 'RW'}</span>
+                      <span>{item.label}</span>
+                      <span className="mcp-kind-badge">{item.badge}</span>
                     </button>
                   ))}
                 </div>
-
-                <div className="mcp-preview-col">
-                  <div className="mcp-preview-head mono">
-                    <strong>{activeTool.name}</strong>
-                    <button
-                      type="button"
-                      className={`dock-copy mono ${copiedId === 'mcp-json' ? 'copied' : ''}`}
-                      onClick={() => copySnippet('mcp-json', `${activeTool.name} payload`, activeTool.sampleCall)}
-                    >
-                      {copiedId === 'mcp-json' ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{copiedId === 'mcp-json' ? 'Copied Call' : 'Copy Call'}</span>
-                    </button>
-                  </div>
-                  <p className="mcp-preview-desc">{activeTool.description}</p>
-                  <pre className="dark-code-block mcp-pre mono">
-                    <code>{renderHighlightedCode(activeTool.sampleEnvelope, 'json')}</code>
-                  </pre>
-                </div>
+                <span className="mcp-spec-tag mono">MCP PROTOCOL 2024-11-05 SPEC</span>
               </div>
+
+              {mcpKind === 'tools' && (
+                <div className="mcp-compact-grid">
+                  <div className="mcp-pill-col" role="listbox" aria-label="9 MCP Tools">
+                    {MCP_TOOLS.map((t, idx) => (
+                      <button
+                        key={t.name}
+                        type="button"
+                        role="option"
+                        aria-selected={t.name === activeToolName}
+                        className={`mcp-tool-btn mono ${t.name === activeToolName ? 'active' : ''}`}
+                        onClick={() => {
+                          soundEngine.playTick(700 + idx * 18);
+                          setActiveToolName(t.name);
+                        }}
+                      >
+                        <span>{t.name}</span>
+                        <span className={`rw-dot ${t.readOnly ? 'ro' : ''}`}>{t.readOnly ? 'RO' : 'RW'}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mcp-preview-col">
+                    <div className="mcp-preview-head mono">
+                      <strong>{activeTool.name}</strong>
+                      <button
+                        type="button"
+                        className={`dock-copy mono ${copiedId === 'mcp-json' ? 'copied' : ''}`}
+                        onClick={() => copySnippet('mcp-json', `${activeTool.name} payload`, activeTool.sampleCall)}
+                      >
+                        {copiedId === 'mcp-json' ? <Check size={12} /> : <Copy size={12} />}
+                        <span>{copiedId === 'mcp-json' ? 'Copied Call' : 'Copy Call'}</span>
+                      </button>
+                    </div>
+                    <p className="mcp-preview-desc">{activeTool.description}</p>
+                    <pre className="dark-code-block mcp-pre mono">
+                      <code>{renderHighlightedCode(activeTool.sampleEnvelope, 'json')}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {mcpKind === 'prompts' && (
+                <div className="mcp-compact-grid">
+                  <div className="mcp-pill-col" role="listbox" aria-label="4 MCP Prompts">
+                    {MCP_PROMPTS.map((p, idx) => (
+                      <button
+                        key={p.name}
+                        type="button"
+                        role="option"
+                        aria-selected={p.name === activePromptName}
+                        className={`mcp-tool-btn mono ${p.name === activePromptName ? 'active' : ''}`}
+                        onClick={() => {
+                          soundEngine.playTick(720 + idx * 24);
+                          setActivePromptName(p.name);
+                        }}
+                      >
+                        <span>{p.name}</span>
+                        <span className="rw-dot">PROMPT</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mcp-preview-col">
+                    <div className="mcp-preview-head mono">
+                      <strong>{activePrompt.name} — {activePrompt.title}</strong>
+                      <button
+                        type="button"
+                        className={`dock-copy mono ${copiedId === 'prompt-name' ? 'copied' : ''}`}
+                        onClick={() => copySnippet('prompt-name', activePrompt.name, activePrompt.name)}
+                      >
+                        {copiedId === 'prompt-name' ? <Check size={12} /> : <Copy size={12} />}
+                        <span>{copiedId === 'prompt-name' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                    <div className="mcp-prompt-details">
+                      <div className="mcp-prompt-row mono">
+                        <span className="mcp-pr-tag">ARGUMENTS:</span>
+                        <code>{activePrompt.args}</code>
+                      </div>
+                      <div className="mcp-prompt-row mono">
+                        <span className="mcp-pr-tag">PROTOCOL FLOW:</span>
+                        <span>{activePrompt.flow}</span>
+                      </div>
+                    </div>
+                    <pre className="dark-code-block mcp-pre mono">
+                      <code>{renderHighlightedCode(`// Client MCP Prompt Request
+{
+  "method": "prompts/get",
+  "params": {
+    "name": "${activePrompt.name.replace(/^\//, '')}",
+    "arguments": {
+      "options": "Pino vs Winston",
+      "context": "High-throughput microservice handling 15k req/s"
+    }
+  }
+}`, 'json')}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {mcpKind === 'resources' && (
+                <div className="mcp-compact-grid">
+                  <div className="mcp-pill-col" role="listbox" aria-label="8 MCP Resources">
+                    {MCP_RESOURCES.map((r, idx) => (
+                      <button
+                        key={r.uri}
+                        type="button"
+                        role="option"
+                        aria-selected={r.uri === activeResourceUri}
+                        className={`mcp-tool-btn mono ${r.uri === activeResourceUri ? 'active' : ''}`}
+                        onClick={() => {
+                          soundEngine.playTick(700 + idx * 16);
+                          setActiveResourceUri(r.uri);
+                        }}
+                      >
+                        <span>{r.uri.replace('vivechak://', '')}</span>
+                        <span className="rw-dot ro">URI</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mcp-preview-col">
+                    <div className="mcp-preview-head mono">
+                      <strong>{activeResource.uri}</strong>
+                      <button
+                        type="button"
+                        className={`dock-copy mono ${copiedId === 'resource-uri' ? 'copied' : ''}`}
+                        onClick={() => copySnippet('resource-uri', activeResource.uri, activeResource.uri)}
+                      >
+                        {copiedId === 'resource-uri' ? <Check size={12} /> : <Copy size={12} />}
+                        <span>{copiedId === 'resource-uri' ? 'Copied URI' : 'Copy URI'}</span>
+                      </button>
+                    </div>
+                    <p className="mcp-preview-desc">{activeResource.desc}</p>
+                    <pre className="dark-code-block mcp-pre mono">
+                      <code>{renderHighlightedCode(`// Client MCP Resource Read Request
+{
+  "method": "resources/read",
+  "params": {
+    "uri": "${activeResource.uri}"
+  }
+}
+// Read-only canonical Markdown template loaded with zero token cost before session generation.`, 'json')}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
 
               <div className="grades-ribbon" role="tablist" aria-label="Evidence Grades A through E">
                 {EVIDENCE_GRADES.map((g) => (

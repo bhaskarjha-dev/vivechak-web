@@ -138,7 +138,7 @@ export const DOC_PAGES: DocPage[] = [
             "type": "code",
             "lang": "markdown",
             "label": "Terminal",
-            "code": "# Homebrew (macOS & Linuxbrew)\nbrew install --cask bhaskarjha-dev/tap/vivechak\n\n# Windows (WinGet or Scoop)\nwinget install bhaskarjha-dev.Vivechak\nscoop bucket add vivechak https://github.com/bhaskarjha-dev/scoop-bucket && scoop install vivechak\n\n# Debian / Ubuntu (.deb) & Fedora / RHEL (.rpm)\nsudo dpkg -i vivechak_0.1.0_linux_amd64.deb   # Debian / Ubuntu\nsudo rpm -i vivechak_0.1.0_linux_amd64.rpm    # Fedora / RHEL\n\n# Nix / NixOS\nnix run github:bhaskarjha-dev/vivechak\n\n# Direct Shell Installers\ncurl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh      # macOS/Linux\nirm https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.ps1 | iex           # Windows"
+            "code": "# Homebrew (macOS & Linuxbrew)\nbrew install --cask bhaskarjha-dev/tap/vivechak\n\n# Windows (WinGet or Scoop)\nwinget install bhaskarjha-dev.Vivechak\nscoop bucket add vivechak https://github.com/bhaskarjha-dev/scoop-bucket && scoop install vivechak\n\n# Debian / Ubuntu (.deb) & Fedora / RHEL (.rpm)\nsudo dpkg -i vivechak_0.1.0_linux_amd64.deb   # Debian / Ubuntu\nsudo rpm -i vivechak_0.1.0_linux_amd64.rpm    # Fedora / RHEL\n\n# Nix / NixOS\nnix run github:bhaskarjha-dev/vivechak\n\n# Direct Shell Installers\ncurl -fsSL https://vivechak.bhaskarjha.dev/install.sh | bash                                  # macOS/Linux\nirm https://vivechak.bhaskarjha.dev/install.ps1 | iex                                         # Windows"
           },
           {
             "type": "text",

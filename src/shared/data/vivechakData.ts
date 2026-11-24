@@ -16,8 +16,8 @@ export const INSTALL_CHANNELS: InstallChannel[] = [
   {
     id: 'shell',
     label: 'macOS / Linux',
-    platform: 'curl · Static binary',
-    command: 'curl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh',
+    platform: 'curl · Universal installer',
+    command: 'curl -fsSL https://vivechak.bhaskarjha.dev/install.sh | bash',
     note: 'Installs both vck and vivechak (~9 MB static Go binary, zero runtime deps).',
   },
   {
@@ -25,28 +25,56 @@ export const INSTALL_CHANNELS: InstallChannel[] = [
     label: 'Homebrew',
     platform: 'macOS & Linuxbrew',
     command: 'brew install --cask bhaskarjha-dev/tap/vivechak',
-    note: 'Signed cask installing vck + vivechak binaries directly to PATH.',
+    note: 'Signed cask installing vck + vivechak binaries directly to PATH with quarantine clearance.',
+  },
+  {
+    id: 'winget',
+    label: 'WinGet',
+    platform: 'Windows Package Manager',
+    command: 'winget install bhaskarjha-dev.Vivechak',
+    note: 'Official Windows Package Manager manifest installing native x64/arm64 binaries.',
+  },
+  {
+    id: 'scoop',
+    label: 'Scoop',
+    platform: 'Windows Scoop Bucket',
+    command: 'scoop bucket add vivechak https://github.com/bhaskarjha-dev/scoop-bucket && scoop install vivechak',
+    note: 'Automated Scoop package with self-updating shim and dual vck alias.',
+  },
+  {
+    id: 'powershell',
+    label: 'PowerShell',
+    platform: 'Windows 1-Line Installer',
+    command: 'irm https://vivechak.bhaskarjha.dev/install.ps1 | iex',
+    note: 'Native PowerShell web installer with automatic path registration and SHA-256 verification.',
   },
   {
     id: 'npx',
     label: 'npx',
     platform: 'Zero-install · Node.js',
     command: 'npx -y vivechak serve',
-    note: 'Ephemeral runner downloading the verified release binary on demand.',
+    note: 'Instant runner downloading the verified release binary on demand (or: npx -y vck serve).',
   },
   {
     id: 'uvx',
     label: 'uvx',
     platform: 'Zero-install · Python / uv',
     command: 'uvx vck serve',
-    note: 'Python uvx wrapper isolating stdout strictly for MCP JSON-RPC.',
+    note: 'Blazing fast Python uvx runner isolating stdout strictly for MCP JSON-RPC.',
   },
   {
-    id: 'powershell',
-    label: 'Windows',
-    platform: 'PowerShell / WinGet',
-    command: 'irm https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.ps1 | iex',
-    note: 'Or: winget install bhaskarjha-dev.Vivechak · scoop install vivechak.',
+    id: 'pip',
+    label: 'pip',
+    platform: 'Python Package Index (PyPI)',
+    command: 'pip install vivechak',
+    note: 'Installs binary launcher for Python environments (or: pip install vck).',
+  },
+  {
+    id: 'linux-pkg',
+    label: 'Deb / RPM',
+    platform: 'Debian, Ubuntu, Fedora, RHEL',
+    command: 'sudo dpkg -i vivechak_0.1.0_linux_amd64.deb   # Or: sudo rpm -i vivechak_0.1.0_linux_amd64.rpm',
+    note: 'Native distro packages generated via nfpms (.deb, .rpm, .apk, Arch PKGBUILD).',
   },
   {
     id: 'docker',
@@ -54,7 +82,7 @@ export const INSTALL_CHANNELS: InstallChannel[] = [
     platform: 'GHCR · Multi-arch',
     command:
       'docker run -i --rm --user "$(id -u):$(id -g)" -e VIVECHAK_PROJECT_ROOT=/workspace -v "${PWD}:/workspace" ghcr.io/bhaskarjha-dev/vivechak:latest serve',
-    note: 'Non-root container strictly confined to /workspace.',
+    note: 'Non-root multi-arch container strictly confined to /workspace.',
   },
   {
     id: 'skill',
@@ -64,11 +92,18 @@ export const INSTALL_CHANNELS: InstallChannel[] = [
     note: 'Installs the canonical SKILL.md playbook for Claude Code, Cursor, Antigravity, OpenCode.',
   },
   {
+    id: 'nix',
+    label: 'Nix Flake',
+    platform: 'Nix / NixOS',
+    command: 'nix run github:bhaskarjha-dev/vivechak',
+    note: 'Reproducible declarative runner via official flake.nix.',
+  },
+  {
     id: 'go',
-    label: 'Go / Nix',
-    platform: 'Go 1.26+ or Nix Flake',
+    label: 'Go',
+    platform: 'Go 1.26+ Toolchain',
     command: 'go install github.com/bhaskarjha-dev/vivechak/cmd/vivechak@latest',
-    note: 'Or run ephemerally with Nix: nix run github:bhaskarjha-dev/vivechak',
+    note: 'Compiles native static binary directly from Go module.',
   },
 ];
 
@@ -1080,7 +1115,174 @@ export interface WorkspaceFile {
   content: string;
 }
 
+export interface ScopePreview {
+  id: 'comparison' | 'decision' | 'project';
+  icon: string;
+  tabLabel: string;
+  badge: string;
+  overhead: string;
+  time: string;
+  title: string;
+  desc: string;
+  examplePrompt: string;
+  command: string;
+  outputFile: string;
+  linkLabel: string;
+  linkHref: string;
+}
+
+export const SCOPE_PREVIEWS: ScopePreview[] = [
+  {
+    id: 'comparison',
+    icon: '⚡',
+    tabLabel: '5-Min Comparison',
+    badge: 'RAPID WEP MATRIX',
+    overhead: '0 DAG · 0 Gate Required',
+    time: '1 Session (~5 mins)',
+    title: 'Compare 2–5 Libraries, Stores, or Algorithms',
+    desc: 'Eliminates toolchain fatigue with an empirical Weighted Evaluation Protocol (WEP) matrix, sensitivity check, and live Grade A–E citations.',
+    examplePrompt: 'Pino vs Winston for high-throughput Node.js microservice',
+    command: 'vck compare "Pino vs Winston"',
+    outputFile: 'research/C-001-comparison.md',
+    linkLabel: 'Explore WEP Playground',
+    linkHref: '/playground',
+  },
+  {
+    id: 'decision',
+    icon: '🎯',
+    tabLabel: '30-Min Decision (ADR)',
+    badge: 'GIT-TRACKED ADR',
+    overhead: '0 Project DAG · Red-Team SHA-256',
+    time: '1–3 Sessions (~30 mins)',
+    title: 'Lock an Architectural Fork or Dilemma in Code',
+    desc: 'Binds an evidence-graded ADR with explicit rejected alternatives, reversal triggers, and automated SHA-256 red-team challenge record.',
+    examplePrompt: 'Should we migrate event storage from PostgreSQL to ClickHouse?',
+    command: 'vck start --scope decision "PostgreSQL vs ClickHouse"',
+    outputFile: 'research/D-001-decision.md',
+    linkLabel: 'Inspect Live Gate',
+    linkHref: '#gate',
+  },
+  {
+    id: 'project',
+    icon: '🏛️',
+    tabLabel: 'Full Project Scope',
+    badge: 'FOUNDING ARCHITECTURE',
+    overhead: 'Topological DAG · Phase 0 Exit Gate',
+    time: '4–30 Sessions (Hours–Days)',
+    title: 'Architect a Greenfield Platform or Major Rewrite',
+    desc: 'Orchestrates dependency-ordered subagent sessions into a unified Founding Architecture Document (FAD) verified by two-track Phase 0 pre-code exit gate.',
+    examplePrompt: 'Architect collaborative AI storytelling platform from scratch',
+    command: 'vck start --scope project "Katha Storytelling Platform"',
+    outputFile: 'research/FAD.md',
+    linkLabel: 'View Live DAG Simulator',
+    linkHref: '#architecture',
+  },
+];
+
 export const WORKSPACE_FILES: WorkspaceFile[] = [
+  {
+    path: 'research/C-001-comparison.md',
+    name: 'C-001-comparison.md',
+    badge: 'WEP · 5-Min Matrix',
+    summary: 'Comparison Scope walkthrough (examples/SAMPLE-COMPARISON.md): Pino vs Winston Weighted Evaluation Protocol matrix with ±20% sensitivity test.',
+    content: `---
+id: C-001
+title: "Pino vs Winston for High-Throughput Node.js Microservice"
+date: "2026-10-18"
+status: complete
+vivechak: 1
+---
+
+# C-001: Pino vs Winston Comparison
+
+## Key Findings
+- Pino delivers up to 5x lower event-loop latency via sonic-boom asynchronous writing [Grade C: https://getpino.io/docs/benchmarks/ | vendor benchmark].
+- Winston formats log entries synchronously on the event loop, causing backpressure lag under heavy HTTP microservice load [Grade B: V8 heap profiler].
+
+## Weighted Evaluation Protocol (WEP) Matrix
+| Criterion | Weight | Pino Score (1-5) | Winston Score (1-5) | Evidence Grade & Provenance |
+|---|---|---|---|---|
+| Event Loop Latency | 0.40 | 5 (0.3ms/log) | 3 (1.8ms/log) | [Grade C: https://getpino.io/docs/benchmarks/ | vendor benchmark] |
+| Memory Allocation | 0.30 | 5 (Minimal GC) | 3 (Object churn) | [Grade B: V8 heap profiler] |
+| Transport Decoupling | 0.30 | 5 (Worker thread) | 4 (In-process streams) | [Grade A: https://github.com/pinojs/pino/blob/master/lib/proto.js | canonical source code] |
+| **Weighted Total** | **1.00** | **5.00** | **3.30** | **Pino Wins (+51% margin)** |
+
+## Sensitivity Check
+Even if transport weight increases to 0.50, Pino retains the winning score (4.70 vs 3.60).
+
+## Failure Modes
+- **Pino:** In unbuffered crashes, in-flight worker logs may be lost unless \`pino.final()\` handler is registered [Grade A: docs].
+- **Winston:** High volume synchronously saturates Node.js libuv event loop threads, creating backpressure lag on HTTP routes [Grade B: issue reports].
+
+## Recommendation
+Adopt **Pino** with externalized log shipping via worker thread. Register \`pino.final()\` on \`SIGTERM\`.
+
+## Sources & Evidence Ledger
+- Pino benchmarks: https://getpino.io/docs/benchmarks/ [Grade C | vendor benchmark]
+- Node.js heap profiler: reproducible local V8 snapshots [Grade B]
+- Pino transport architecture: https://getpino.io/docs/transports/ [Grade A]`,
+  },
+  {
+    path: 'research/DECISIONS.md',
+    name: 'DECISIONS.md',
+    badge: 'Registry · Single Source',
+    summary: 'Consolidated registry auto-compiled by vivechak_record_decision tracking accepted ADRs, reversal triggers, and signoff hashes.',
+    content: `# Architectural Decisions (DECISIONS.md)
+
+*Compiled automatically by \`vck\` / \`vivechak_record_decision\`. Canonical files are \`research/D-*.md\`.*
+
+| ID | Title | Status | Door | Review Trigger | Reviewer | SHA-256 Hash |
+|---|---|---|---|---|---|---|
+| [D-001](D-001-decision.md) | Analytical Event Storage Engine | Accepted | One-Way | Ingest > 150k/s or storage > $2.5k/mo | Jane Doe | \`8c3f9e41b2a7d018f5...\` |
+| [D-002](D-002-decision.md) | Collaborative Chapter Sync Engine (Yjs) | Accepted | Two-Way | Offline conflict rate > 2.5% | — | — |
+| [D-003](D-003-decision.md) | LLM Streaming & Token Context Budget | Accepted | Two-Way | Model p95 latency > 1,200ms | — | — |
+
+## Summary
+- **Total Decisions:** 3
+- **One-Way Doors:** 1 (100% human-signed via \`vck signoff\`)
+- **Two-Way Doors:** 2 (Fast reversible paths)
+- **Phase 0 Status:** Pre-codebase exit criteria verified via \`vck gate\` (Exit code 0 PASS)`,
+  },
+  {
+    path: 'research/FAD.md',
+    name: 'FAD.md',
+    badge: 'FAD · Map-Reduce',
+    summary: 'Founding Architecture Document synthesized after 100% of pipeline DAG sessions reach status: complete.',
+    content: `---
+id: SYN-01
+title: "Katha — Collaborative AI Storytelling Platform FAD"
+synthesis_date: 2026-11-18
+status: sealed
+research_sessions_ingested: 4
+decisions_locked: 3
+open_questions: 0
+schema_version: "0.1.0"
+vivechak: 1
+---
+
+# Katha — Founding Architecture Document (FAD)
+
+## 1. Executive Summary
+Katha is a collaborative web platform enabling indie novelists to write fiction with real-time character graph consistency, automated plot outline assistance, and low-latency token streaming. 
+
+This Founding Architecture Document synthesizes research sessions T0-01, T1-01, T1-02, and T1-03 into a unified system specification.
+
+## 2. Locked Decision Registry
+| D-ID | Decision | Chosen Solution | Door Type | Confidence | Evidence Ref |
+|---|---|---|---|---|---|
+| D-001 | Primary Story Graph Datastore | PostgreSQL 16 + recursive CTEs + pgvector | One-Way | High | [Grade A: postgresql.org] |
+| D-002 | Chapter Collaboration Engine | Yjs CRDT + WebSocket ephemeral provider | Two-Way | High | [Grade A: yjs.dev] |
+| D-003 | LLM Streaming & Context Window | SSE streaming + sliding story-graph window | Two-Way | High | [Grade A: fetch API] |
+
+## 3. Composed vs Built Primitives (Wardley Map)
+- **Composed (Commodity):** PostgreSQL 16 (OLTP + graph queries + vectors), Yjs (conflict-free chapter sync), Next.js 15 (Edge SSR).
+- **Built (Proprietary Core IP):** Consistency Traversal Engine (CTE query builder enforcing max depth <= 8), Story-Graph Context Pruner (extracts top-k active character arcs for LLM prompt context).
+
+## 4. Phase 0 Gate Verification
+- **Track A (Two-Way Doors):** D-002, D-003 reversibility confirmed (spikes in code branch).
+- **Track B (One-Way Doors):** D-001 passed G1–G10 rules; signed off by Jane Doe (\`vck signoff D-001\`). Exit 0 sealed.`,
+  },
+
   {
     path: 'research/RESEARCH-PIPELINE.md',
     name: 'RESEARCH-PIPELINE.md',

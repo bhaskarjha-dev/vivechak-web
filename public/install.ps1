@@ -1,0 +1,135 @@
+#Requires -Version 5.1
+# Vivechak installer for Windows
+# Usage: irm https://vivechak.bhaskarjha.dev/install.ps1 | iex
+
+$ErrorActionPreference = 'Stop'
+
+$Repo = 'bhaskarjha-dev/vivechak'
+$InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\vivechak'
+
+# Detect architecture
+$Arch = if ([Environment]::Is64BitOperatingSystem) {
+    if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64' -or $env:PROCESSOR_IDENTIFIER -match 'ARM') {
+        'arm64'
+    } else {
+        'amd64'
+    }
+} else {
+    Write-Error 'Vivechak requires a 64-bit operating system'
+    return
+}
+
+Write-Host "Detected: windows/$Arch" -ForegroundColor Cyan
+
+# Get latest release
+Write-Host 'Fetching latest release...'
+try {
+    $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
+    $Tag = $Release.tag_name
+} catch {
+    # Fallback to redirect URL on API rate limits (using .NET HttpWebRequest to avoid IE COM engine dependency and properly capture 302 location)
+    try {
+        $Req = [System.Net.HttpWebRequest]::Create("https://github.com/$Repo/releases/latest")
+        $Req.AllowAutoRedirect = $false
+        $Resp = $Req.GetResponse()
+        $Loc = $Resp.Headers['Location']
+        $Resp.Close()
+        if ($Loc) {
+            $Tag = Split-Path $Loc -Leaf
+        }
+    } catch [System.Net.WebException] {
+        if ($_.Exception.Response) {
+            $Loc = $_.Exception.Response.Headers['Location']
+            $_.Exception.Response.Close()
+            if ($Loc) {
+                $Tag = Split-Path $Loc -Leaf
+            }
+        }
+    }
+    if (-not $Tag -or $Tag -eq 'releases' -or $Tag -eq 'latest') {
+        Write-Error "Could not determine latest release: $_"
+        return
+    }
+}
+$Version = $Tag.TrimStart('v')
+Write-Host "Latest version: $Tag" -ForegroundColor Cyan
+
+# Download
+$Archive = "vivechak_${Version}_windows_${Arch}.zip"
+$Url = "https://github.com/$Repo/releases/download/$Tag/$Archive"
+$ChecksumUrl = "https://github.com/$Repo/releases/download/$Tag/checksums.txt"
+
+$TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "vivechak-install-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
+
+try {
+    Write-Host "Downloading $Archive..."
+    Invoke-WebRequest -Uri $Url -OutFile (Join-Path $TmpDir $Archive) -UseBasicParsing
+    Invoke-WebRequest -Uri $ChecksumUrl -OutFile (Join-Path $TmpDir 'checksums.txt') -UseBasicParsing
+
+    # Verify checksum
+    Write-Host 'Verifying checksum...'
+    $EscapedArchive = [regex]::Escape($Archive)
+    $ExpectedLine = Get-Content (Join-Path $TmpDir 'checksums.txt') | Where-Object { $_ -match "\s+$EscapedArchive$" }
+    if (-not $ExpectedLine) {
+        $ExpectedLine = Get-Content (Join-Path $TmpDir 'checksums.txt') | Where-Object { ($_ -split '\s+')[-1] -eq $Archive }
+    }
+    if (-not $ExpectedLine) {
+        Write-Error "Archive $Archive not found in checksums.txt! Cannot verify download integrity."
+        return
+    }
+
+    $ExpectedHash = ($ExpectedLine -split '\s+')[0].Trim().ToLower()
+    $ActualHash = (Get-FileHash (Join-Path $TmpDir $Archive) -Algorithm SHA256).Hash.Trim().ToLower()
+    if ($ActualHash -ne $ExpectedHash) {
+        Write-Error "Checksum mismatch! Expected: $ExpectedHash, Got: $ActualHash"
+        return
+    }
+    Write-Host "✓ Checksum verified ($ActualHash)" -ForegroundColor Green
+
+    # Extract
+    Write-Host 'Extracting...'
+    Expand-Archive -Path (Join-Path $TmpDir $Archive) -DestinationPath $TmpDir -Force
+
+    # Install
+    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    Copy-Item (Join-Path $TmpDir 'vivechak.exe') -Destination (Join-Path $InstallDir 'vivechak.exe') -Force
+    if (Test-Path (Join-Path $TmpDir 'vck.exe')) {
+        Copy-Item (Join-Path $TmpDir 'vck.exe') -Destination (Join-Path $InstallDir 'vck.exe') -Force
+    } else {
+        Copy-Item (Join-Path $TmpDir 'vivechak.exe') -Destination (Join-Path $InstallDir 'vck.exe') -Force
+    }
+
+    # Add to PATH if not already there (preserving unexpanded variables like %USERPROFILE%)
+    $RegKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    if ($RegKey) {
+        try {
+            $RawPath = $RegKey.GetValue('PATH', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+            $PathParts = $RawPath -split ';' | Where-Object { $_ -ne '' }
+            if ($PathParts -notcontains $InstallDir) {
+                $NewPath = if ($RawPath) { "$InstallDir;$RawPath" } else { $InstallDir }
+                $Kind = try { $RegKey.GetValueKind('PATH') } catch { [Microsoft.Win32.RegistryValueKind]::ExpandString }
+                $RegKey.SetValue('PATH', $NewPath, $Kind)
+                Write-Host "Added $InstallDir to user PATH" -ForegroundColor Yellow
+                Write-Host 'Note: restart your terminal for PATH changes to take effect' -ForegroundColor Yellow
+            }
+        } finally {
+            $RegKey.Close()
+        }
+    }
+
+    # Also update current session
+    $env:PATH = "$InstallDir;$env:PATH"
+
+    Write-Host ''
+    Write-Host "vivechak $Tag and shorthand 'vck' installed to $InstallDir" -ForegroundColor Green
+    Write-Host ''
+    Write-Host 'Next steps: configure your AI host:' -ForegroundColor Cyan
+    Write-Host '  vck setup cursor                             # configure Cursor IDE'
+    Write-Host '  vck setup claude                             # configure Claude Desktop'
+    Write-Host '  vck setup                                    # auto-detect workspace host'
+    Write-Host '  vck mcp-config                               # print universal MCP config'
+    Write-Host ''
+} finally {
+    Remove-Item -Path $TmpDir -Recurse -Force -ErrorAction SilentlyContinue
+}
