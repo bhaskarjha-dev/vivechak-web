@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Check, Copy, RotateCcw, Terminal } from 'lucide-react';
-import { INSTALL_CHANNELS, SCOPE_PREVIEWS } from '@/shared/data/vivechakData';
+import { INSTALL_CHANNELS } from '@/shared/data/vivechakData';
 import { copyText } from '@/shared/lib/clipboard';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
@@ -102,8 +102,6 @@ const SHORT_LABELS: Record<string, string> = {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost }) => {
   const [channelId, setChannelId] = useState(INSTALL_CHANNELS[0].id);
-  const [scopeId, setScopeId] = useState<'comparison' | 'decision' | 'project'>('comparison');
-  const [scopeCopied, setScopeCopied] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<SieveMode>('sift');
   const [siftedCount, setSiftedCount] = useState(14);
@@ -167,17 +165,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
     setImpulseText('SEALED · G1–G12 PASS · EXIT 0');
     setImpulseNonce((n) => n + 1);
     setSiftedCount((c) => c + 3);
-  };
-
-  const activeScope = SCOPE_PREVIEWS.find((s) => s.id === scopeId) ?? SCOPE_PREVIEWS[0];
-
-  const handleScopeCopy = async () => {
-    const ok = await copyText(activeScope.command);
-    if (!ok) return;
-    soundEngine.playSieveDrop();
-    setScopeCopied(true);
-    showToast(`Copied ${activeScope.tabLabel} command`);
-    window.setTimeout(() => setScopeCopied(false), 1800);
   };
 
   const activeChannel =
@@ -376,89 +363,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
           ) : (
             <HeroLogoFallback />
           )}
-        </div>
-
-                {/* 3-Scope Epistemic Sieve Selector Strip */}
-        <div className="hero-scopes-card" id="scopes-bar">
-          <div className="scope-tabs-bar">
-            <span className="scope-bar-tag mono">CHOOSE SCOPE</span>
-            <div className="scope-tabs" role="tablist" aria-label="Vivechak decision scope levels">
-              {SCOPE_PREVIEWS.map((sc) => (
-                <button
-                  key={sc.id}
-                  type="button"
-                  role="tab"
-                  id={`scope-tab-${sc.id}`}
-                  aria-selected={sc.id === scopeId}
-                  className={`scope-tab mono ${sc.id === scopeId ? 'active' : ''}`}
-                  onClick={() => {
-                    soundEngine.playTick(sc.id === 'comparison' ? 680 : sc.id === 'decision' ? 740 : 800);
-                    setScopeId(sc.id);
-                    setScopeCopied(false);
-                  }}
-                >
-                  {sc.id === scopeId && (
-                    <motion.span
-                      layoutId="scopeTabBg"
-                      className="scope-tab-bg"
-                      transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                    />
-                  )}
-                  <span className="scope-tab-content">
-                    <span className="scope-tab-icon">{sc.icon}</span>
-                    <span className="scope-tab-text">{sc.tabLabel}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            <span className="scope-sessions-tag mono">{activeScope.time}</span>
-          </div>
-
-          <div className="scope-preview-content">
-            <div className="scope-text-col">
-              <div className="scope-header-row">
-                <span className="scope-badge mono">{activeScope.badge}</span>
-                <span className="scope-guarantee mono">{activeScope.overhead}</span>
-              </div>
-              <h3 className="scope-heading">{activeScope.title}</h3>
-              <p className="scope-explanation">{activeScope.desc}</p>
-              <div className="scope-example-box mono">
-                <span className="scope-ex-lbl">ASK IN CHAT:</span>
-                <span className="scope-ex-val">&quot;{activeScope.examplePrompt}&quot;</span>
-              </div>
-            </div>
-
-            <div className="scope-action-col">
-              <div className="scope-cli-box mono">
-                <span className="scope-cli-prompt" aria-hidden="true">$</span>
-                <code className="scope-cli-code">{activeScope.command}</code>
-                <motion.button
-                  type="button"
-                  className={`dock-copy mono ${scopeCopied ? 'copied' : ''}`}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleScopeCopy}
-                  title="Copy scope invocation command"
-                >
-                  {scopeCopied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
-                  <span>{scopeCopied ? 'Copied' : 'Copy'}</span>
-                </motion.button>
-              </div>
-
-              <div className="scope-footer-row mono">
-                <span className="scope-artifact-target">
-                  OUTPUT: <strong>{activeScope.outputFile}</strong>
-                </span>
-                <a
-                  href={activeScope.linkHref}
-                  className="scope-jump-link"
-                  onClick={() => soundEngine.playTick(720)}
-                >
-                  <span>{activeScope.linkLabel}</span>
-                  <ArrowRight size={12} />
-                </a>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="install-dock" id="install-bar">
