@@ -10,7 +10,8 @@ interface RiskDoorVisualProps {
 
 /**
  * Interactive Real-Time 3D-Projected Reversibility Portal & Risk Polyhedron.
- * Hover to tilt 3D perspective; click to cycle Two-Way Door -> One-Way Vault -> X=3 Lock.
+ * Auto-rotates smoothly in 3D at rest; drag/flick to set spin axis & tilt; double-click to recenter;
+ * click to cycle Two-Way Door -> One-Way Vault -> X=3 Lock.
  */
 export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
   rnbx,
@@ -20,7 +21,23 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const propsRef = useRef({ rnbx, doorType, hardOverride });
-  const hoverTiltRef = useRef({ x: 0, y: 0, tx: 0, ty: 0, spinY: 0, spinX: 0, velY: 0, velX: 0, dragging: false, moved: false, px: 0, py: 0 });
+  const hoverTiltRef = useRef({
+    x: 0,
+    y: 0,
+    tx: 0,
+    ty: 0,
+    spinY: 0,
+    spinX: 0,
+    velY: 0,
+    velX: 0,
+    cruiseY: 0.58,
+    cruiseX: 0.06,
+    resetting: false,
+    dragging: false,
+    moved: false,
+    px: 0,
+    py: 0,
+  });
   propsRef.current = { rnbx, doorType, hardOverride };
 
   useEffect(() => {
@@ -29,7 +46,7 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const size = 84;
+    const size = 92;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = size * dpr;
     canvas.height = size * dpr;
@@ -51,7 +68,7 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
 
     const draw = (now: number) => {
       rafId = requestAnimationFrame(draw);
-      const dt = Math.min((now - lastTs) / 1000, 0.05);
+      const dt = Math.min(Math.max(0, (now - lastTs) / 1000), 0.05);
       lastTs = now;
 
       const { rnbx: p, doorType: dtMode, hardOverride: ov } = propsRef.current;
@@ -59,149 +76,167 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
       const intensity = (p.r + p.n + p.b + p.x) / 12;
       const damp = 1 - Math.exp(-dt * 8);
 
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       oneWayBlend += ((dtMode === 'one-way' ? 1 : 0) - oneWayBlend) * damp;
       overrideBlend += ((ov ? 1 : 0) - overrideBlend) * damp;
       hoverTiltRef.current.x += (hoverTiltRef.current.tx - hoverTiltRef.current.x) * damp;
       hoverTiltRef.current.y += (hoverTiltRef.current.ty - hoverTiltRef.current.y) * damp;
       if (!hoverTiltRef.current.dragging) {
-        hoverTiltRef.current.spinY += hoverTiltRef.current.velY * dt;
-        hoverTiltRef.current.spinX += hoverTiltRef.current.velX * dt;
-        const fr = Math.exp(-dt * 3.6);
-        hoverTiltRef.current.velY *= fr;
-        hoverTiltRef.current.velX *= fr;
+        if (hoverTiltRef.current.resetting) {
+          const rDamp = 1 - Math.exp(-dt * 7.2);
+          hoverTiltRef.current.spinY += (0 - hoverTiltRef.current.spinY) * rDamp;
+          hoverTiltRef.current.spinX += (0 - hoverTiltRef.current.spinX) * rDamp;
+          if (Math.hypot(hoverTiltRef.current.spinX, hoverTiltRef.current.spinY) < 0.01) {
+            hoverTiltRef.current.spinX = 0;
+            hoverTiltRef.current.spinY = 0;
+            hoverTiltRef.current.resetting = false;
+          }
+        } else {
+          const fr = Math.exp(-dt * 3.1);
+          hoverTiltRef.current.velY *= fr;
+          hoverTiltRef.current.velX *= fr;
+          const hoverSlow = hoverTiltRef.current.tx !== 0 || hoverTiltRef.current.ty !== 0 ? 0.55 : 1.0;
+          const motionScale = prefersReducedMotion ? 0.35 : 1.0;
+          hoverTiltRef.current.spinY += (hoverTiltRef.current.velY + hoverTiltRef.current.cruiseY * hoverSlow * motionScale) * dt;
+          hoverTiltRef.current.spinX += (hoverTiltRef.current.velX + hoverTiltRef.current.cruiseX * hoverSlow * motionScale) * dt;
+        }
       }
       const hx = hoverTiltRef.current.x + hoverTiltRef.current.spinY;
       const hy = hoverTiltRef.current.y + hoverTiltRef.current.spinX;
-      t += dt * (0.9 + intensity * 1.45);
+      t += dt * (prefersReducedMotion ? 0.35 : 0.9 + intensity * 1.45);
 
       ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, size, size);
+      try {
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, size, size);
 
-      const cx = size / 2;
-      const cy = size / 2;
+        const cx = size / 2;
+        const cy = size / 2;
 
-      // Primary semantic color interpolation: Emerald (Two-Way) -> Saffron (One-Way) -> Crimson (X=3)
-      const rCol = Math.round(
-        37 + (242 - 37) * oneWayBlend + (225 - 242) * overrideBlend
-      );
-      const gCol = Math.round(
-        176 + (163 - 176) * oneWayBlend + (82 - 163) * overrideBlend
-      );
-      const bCol = Math.round(
-        127 + (58 - 127) * oneWayBlend + (74 - 58) * overrideBlend
-      );
-      const accent = `${rCol},${gCol},${bCol}`;
+        // Primary semantic color interpolation: Emerald (Two-Way) -> Saffron (One-Way) -> Crimson (X=3)
+        const rCol = Math.round(
+          37 + (242 - 37) * oneWayBlend + (225 - 242) * overrideBlend
+        );
+        const gCol = Math.round(
+          176 + (163 - 176) * oneWayBlend + (82 - 163) * overrideBlend
+        );
+        const bCol = Math.round(
+          127 + (58 - 127) * oneWayBlend + (74 - 58) * overrideBlend
+        );
+        const accent = `${rCol},${gCol},${bCol}`;
 
-      // Ambient core glow
-      const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, 36);
-      halo.addColorStop(0, `rgba(${accent},${isLight ? 0.3 : 0.44})`);
-      halo.addColorStop(1, `rgba(${accent},0)`);
-      ctx.fillStyle = halo;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 36, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Outer 3D gimbal ring (ticks tighten into vault lock on One-Way / Override)
-      const ringR = 29;
-      ctx.strokeStyle = `rgba(${accent},${isLight ? 0.72 : 0.78})`;
-      ctx.lineWidth = 1.45;
-      ctx.beginPath();
-      for (let i = 0; i <= 48; i++) {
-        const a = (i / 48) * Math.PI * 2 + t * 0.45;
-        const pt = project(Math.cos(a) * ringR, Math.sin(a) * ringR, 0, 0.55 + oneWayBlend * 0.25 + hy * 0.45, t * 0.4 + hx * 0.55);
-        if (i === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
-
-      // Second orthogonal orbital ring (represents blast radius B + novelty N)
-      ctx.strokeStyle = isLight ? 'rgba(18,32,63,0.34)' : 'rgba(166,179,204,0.38)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = 0; i <= 48; i++) {
-        const a = (i / 48) * Math.PI * 2 - t * 0.6;
-        const pt = project(Math.cos(a) * 23, 0, Math.sin(a) * 23, 0.42, -t * 0.55);
-        if (i === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
-
-      // Central 3D Door / Containment Polyhedron
-      if (overrideBlend > 0.45) {
-        // X=3 Hard Override: Rotating 3D Hexagonal Containment Cage
-        const cageR = 15.5;
-        const vertsTop: { x: number; y: number }[] = [];
-        const vertsBot: { x: number; y: number }[] = [];
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2 + t * 0.65;
-          vertsTop.push(project(Math.cos(a) * cageR, -11, Math.sin(a) * cageR, 0.36, 0));
-          vertsBot.push(project(Math.cos(a) * cageR, 11, Math.sin(a) * cageR, 0.36, 0));
-        }
-        ctx.strokeStyle = `rgba(255,112,104,${0.88 * overrideBlend})`;
-        ctx.lineWidth = 1.35;
-        for (let i = 0; i < 6; i++) {
-          const j = (i + 1) % 6;
-          ctx.beginPath();
-          ctx.moveTo(vertsTop[i].x, vertsTop[i].y);
-          ctx.lineTo(vertsTop[j].x, vertsTop[j].y);
-          ctx.moveTo(vertsBot[i].x, vertsBot[i].y);
-          ctx.lineTo(vertsBot[j].x, vertsBot[j].y);
-          ctx.moveTo(vertsTop[i].x, vertsTop[i].y);
-          ctx.lineTo(vertsBot[i].x, vertsBot[i].y);
-          ctx.stroke();
-        }
-        // Horizontal red laser scan line across cage
-        const ly = cy + Math.sin(t * 2.8) * 12;
-        ctx.strokeStyle = 'rgba(255,150,144,0.9)';
-        ctx.lineWidth = 1.4;
+        // Ambient core glow
+        const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, 36);
+        halo.addColorStop(0, `rgba(${accent},${isLight ? 0.28 : 0.42})`);
+        halo.addColorStop(1, `rgba(${accent},0)`);
+        ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.moveTo(cx - 18, ly);
-        ctx.lineTo(cx + 18, ly);
-        ctx.stroke();
-      } else {
-        // Swinging Two-Way Door Panels <-> Interlocking One-Way Vault Diamond
-        const swingAngle = (1 - oneWayBlend) * (0.55 + Math.sin(t * 1.9) * 0.42);
-        const panelW = 13;
-        const panelH = 16;
+        ctx.arc(cx, cy, 36, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Left & Right 3D swinging door wings
-        for (const side of [-1, 1]) {
-          const hingeX = side * 14;
-          const a = side * swingAngle;
-          const tipX = hingeX - side * Math.cos(a) * panelW;
-          const tipZ = Math.sin(a) * panelW;
-          const p0 = project(hingeX, -panelH, 0, 0.2, 0);
-          const p1 = project(tipX, -panelH, tipZ, 0.2, 0);
-          const p2 = project(tipX, panelH, tipZ, 0.2, 0);
-          const p3 = project(hingeX, panelH, 0, 0.2, 0);
-
-          ctx.fillStyle = `rgba(${accent},${isLight ? 0.16 : 0.22})`;
-          ctx.strokeStyle = `rgba(${accent},${isLight ? 0.85 : 0.92})`;
-          ctx.lineWidth = 1.35;
-          ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.lineTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.lineTo(p3.x, p3.y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+        // Outer 3D gimbal ring (ticks tighten into vault lock on One-Way / Override)
+        const ringR = 29;
+        ctx.strokeStyle = `rgba(${accent},${isLight ? 0.74 : 0.78})`;
+        ctx.lineWidth = 1.45;
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const a = (i / 48) * Math.PI * 2 + t * 0.45;
+          const pt = project(Math.cos(a) * ringR, Math.sin(a) * ringR, 0, 0.55 + oneWayBlend * 0.25 + hy * 0.5, t * 0.4 + hx * 0.6);
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
         }
+        ctx.stroke();
+
+        // Second orthogonal orbital ring (represents blast radius B + novelty N)
+        ctx.strokeStyle = isLight ? 'rgba(18,32,63,0.34)' : 'rgba(166,179,204,0.38)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const a = (i / 48) * Math.PI * 2 - t * 0.6;
+          const pt = project(Math.cos(a) * 23, 0, Math.sin(a) * 23, 0.42 + hy * 0.35, -t * 0.55 + hx * 0.45);
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+
+        // Central 3D Door / Containment Polyhedron
+        if (overrideBlend > 0.45) {
+          // X=3 Hard Override: Rotating 3D Hexagonal Containment Cage
+          const cageR = 15.5;
+          const vertsTop: { x: number; y: number }[] = [];
+          const vertsBot: { x: number; y: number }[] = [];
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + t * 0.65;
+            vertsTop.push(project(Math.cos(a) * cageR, -11, Math.sin(a) * cageR, 0.36 + hy * 0.35, hx * 0.45));
+            vertsBot.push(project(Math.cos(a) * cageR, 11, Math.sin(a) * cageR, 0.36 + hy * 0.35, hx * 0.45));
+          }
+          ctx.strokeStyle = `rgba(255,112,104,${0.88 * overrideBlend})`;
+          ctx.lineWidth = 1.35;
+          for (let i = 0; i < 6; i++) {
+            const j = (i + 1) % 6;
+            ctx.beginPath();
+            ctx.moveTo(vertsTop[i].x, vertsTop[i].y);
+            ctx.lineTo(vertsTop[j].x, vertsTop[j].y);
+            ctx.moveTo(vertsBot[i].x, vertsBot[i].y);
+            ctx.lineTo(vertsBot[j].x, vertsBot[j].y);
+            ctx.moveTo(vertsTop[i].x, vertsTop[i].y);
+            ctx.lineTo(vertsBot[i].x, vertsBot[i].y);
+            ctx.stroke();
+          }
+          // Horizontal red laser scan line across cage
+          const ly = cy + Math.sin(t * 2.8) * 12;
+          ctx.strokeStyle = 'rgba(255,150,144,0.9)';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(cx - 18, ly);
+          ctx.lineTo(cx + 18, ly);
+          ctx.stroke();
+        } else {
+          // Swinging Two-Way Door Panels <-> Interlocking One-Way Vault Diamond
+          const swingAngle = (1 - oneWayBlend) * (0.55 + Math.sin(t * 1.9) * 0.42);
+          const panelW = 13;
+          const panelH = 16;
+
+          // Left & Right 3D swinging door wings
+          for (const side of [-1, 1]) {
+            const hingeX = side * 14;
+            const a = side * swingAngle;
+            const tipX = hingeX - side * Math.cos(a) * panelW;
+            const tipZ = Math.sin(a) * panelW;
+            const p0 = project(hingeX, -panelH, 0, 0.2 + hy * 0.35, hx * 0.4);
+            const p1 = project(tipX, -panelH, tipZ, 0.2 + hy * 0.35, hx * 0.4);
+            const p2 = project(tipX, panelH, tipZ, 0.2 + hy * 0.35, hx * 0.4);
+            const p3 = project(hingeX, panelH, 0, 0.2 + hy * 0.35, hx * 0.4);
+
+            ctx.fillStyle = `rgba(${accent},${isLight ? 0.16 : 0.22})`;
+            ctx.strokeStyle = `rgba(${accent},${isLight ? 0.85 : 0.92})`;
+            ctx.lineWidth = 1.35;
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+
+        // Luminous Epistemic Core Center Node
+        const coreR = Math.max(1, 4.2 + intensity * 1.8 + Math.sin(t * 2.6) * 0.5);
+        const cg = ctx.createRadialGradient(cx - 1.2, cy - 1.2, 0.5, cx, cy, coreR);
+        cg.addColorStop(0, '#ffffff');
+        cg.addColorStop(0.55, `rgb(${accent})`);
+        cg.addColorStop(1, `rgba(${accent},0.35)`);
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+        ctx.fill();
+      } finally {
+        ctx.restore();
       }
-
-      // Luminous Epistemic Core Center Node
-      const coreR = 4.2 + intensity * 1.8 + Math.sin(t * 2.6) * 0.5;
-      const cg = ctx.createRadialGradient(cx - 1.2, cy - 1.2, 0.5, cx, cy, coreR);
-      cg.addColorStop(0, '#ffffff');
-      cg.addColorStop(0.55, `rgb(${accent})`);
-      cg.addColorStop(1, `rgba(${accent},0.35)`);
-      ctx.fillStyle = cg;
-      ctx.beginPath();
-      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
     };
 
     rafId = requestAnimationFrame(draw);
@@ -219,9 +254,20 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
         }
         onCycleMode?.();
       }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        hoverTiltRef.current.velX = 0;
+        hoverTiltRef.current.velY = 0;
+        hoverTiltRef.current.cruiseY = 0.58;
+        hoverTiltRef.current.cruiseX = 0.06;
+        hoverTiltRef.current.resetting = true;
+      }}
       onPointerDown={(e) => {
         hoverTiltRef.current.dragging = true;
         hoverTiltRef.current.moved = false;
+        hoverTiltRef.current.resetting = false;
+        hoverTiltRef.current.velX = 0;
+        hoverTiltRef.current.velY = 0;
         hoverTiltRef.current.px = e.clientX;
         hoverTiltRef.current.py = e.clientY;
         try {
@@ -240,13 +286,20 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
           if (Math.hypot(dx, dy) > 3) hoverTiltRef.current.moved = true;
           hoverTiltRef.current.spinY += dx * 0.032;
           hoverTiltRef.current.spinX += dy * 0.032;
-          hoverTiltRef.current.velY = dx * 0.25;
-          hoverTiltRef.current.velX = dy * 0.25;
+          hoverTiltRef.current.velY = Math.max(-7, Math.min(7, dx * 0.25));
+          hoverTiltRef.current.velX = Math.max(-7, Math.min(7, dy * 0.25));
           hoverTiltRef.current.px = e.clientX;
           hoverTiltRef.current.py = e.clientY;
         }
       }}
       onPointerUp={(e) => {
+        if (hoverTiltRef.current.dragging && hoverTiltRef.current.moved) {
+          const mag = Math.hypot(hoverTiltRef.current.velX, hoverTiltRef.current.velY);
+          if (mag > 0.16) {
+            hoverTiltRef.current.cruiseX = (hoverTiltRef.current.velX / mag) * 0.62;
+            hoverTiltRef.current.cruiseY = (hoverTiltRef.current.velY / mag) * 0.62;
+          }
+        }
         hoverTiltRef.current.dragging = false;
         try {
           e.currentTarget.releasePointerCapture(e.pointerId);
@@ -259,14 +312,12 @@ export const RiskDoorVisual: React.FC<RiskDoorVisualProps> = ({
         hoverTiltRef.current.ty = 0;
         hoverTiltRef.current.dragging = false;
       }}
-      title="Drag to spin 3D portal · click to cycle Two-Way Door → One-Way Vault → X=3 Override"
-      aria-label="Interactive 3D reversibility door — drag to rotate 360° or click to cycle door mode"
+      title="Drag to spin 3D portal (flick sets axis · dbl-click resets) · click to cycle Two-Way → One-Way → X=3"
+      aria-label="Interactive 3D reversibility door — drag to rotate 360°, flick to set axis, or click to cycle door mode"
     >
       <canvas
         ref={canvasRef}
         className="risk-door-canvas"
-        width={84}
-        height={84}
         aria-hidden="true"
       />
     </button>
