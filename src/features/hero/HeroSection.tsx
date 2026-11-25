@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Copy, RotateCcw, Terminal } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Copy, Pause, Play, RotateCcw, Terminal } from 'lucide-react';
 import { INSTALL_CHANNELS } from '@/shared/data/vivechakData';
 import { copyText } from '@/shared/lib/clipboard';
 import { soundEngine } from '@/shared/lib/sound';
@@ -116,6 +116,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
   const [hoveredSculpture, setHoveredSculpture] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
   const [resetAxisNonce, setResetAxisNonce] = useState(0);
+  const [rotationPaused, setRotationPaused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [heroEngine, setHeroEngine] = useState<'ssr' | 'webgl' | 'canvas2d'>('ssr');
 
@@ -277,6 +278,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                   theme={theme}
                   impulseNonce={impulseNonce}
                   impulseText={impulseText}
+                  rotationPaused={rotationPaused}
                   onPulseClick={triggerSculpturePulse}
                   onSuperDistill={triggerSuperDistill}
                   onTruthPulse={() => setDistilledCount((n) => n + 1)}
@@ -306,6 +308,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                   impulseNonce={impulseNonce}
                   replayNonce={replayNonce}
                   resetAxisNonce={resetAxisNonce}
+                  rotationPaused={rotationPaused}
                   onQuickPulse={triggerSculpturePulse}
                   onSuperDistill={triggerSuperDistill}
                   onTruthPulse={() => setDistilledCount((n) => n + 1)}
@@ -328,7 +331,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                   </AnimatePresence>
                   {hoveredSculpture && !hasInteracted && mode === 'sift' && (
                     <span className="logo-first-whisper mono">
-                      DRAG TO SPIN · FLICK SETS AXIS · HOLD TO DISTILL
+                      DRAG TO SPIN · HOLD TO DISTILL
                     </span>
                   )}
                 </div>
@@ -373,35 +376,58 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
 
             {/* Instrument Lens Controls — Anchored Directly Below the Physical Sieve */}
             <div className="sieve-mode-bar">
-              <div className="sieve-pills" role="group" aria-label="3D Epistemic Sieve mode">
-                {MODES.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    id={`sieve-mode-${m.id}`}
-                    className={`sieve-pill mono ${mode === m.id ? 'active' : ''}`}
-                    onClick={() => {
-                      if (m.id === 'sealed') soundEngine.playGatePass();
-                      else if (m.id === 'noise') soundEngine.playReject();
-                      else soundEngine.playSieveDrop();
-                      setMode(m.id);
-                    }}
-                  >
-                    {mode === m.id && (
-                      <motion.span
-                        layoutId="sieveModePill"
-                        className="sieve-pill-bg"
-                        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                      />
-                    )}
-                    <span className="sieve-pill-label">{m.label}</span>
-                  </button>
-                ))}
+              <div className="sieve-controls-row">
+                <div className="sieve-pills" role="group" aria-label="3D Epistemic Sieve mode">
+                  {MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      id={`sieve-mode-${m.id}`}
+                      className={`sieve-pill mono ${mode === m.id ? 'active' : ''}`}
+                      onClick={() => {
+                        if (m.id === 'sealed') soundEngine.playGatePass();
+                        else if (m.id === 'noise') soundEngine.playReject();
+                        else soundEngine.playSieveDrop();
+                        setMode(m.id);
+                      }}
+                    >
+                      {mode === m.id && (
+                        <motion.span
+                          layoutId="sieveModePill"
+                          className="sieve-pill-bg"
+                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                        />
+                      )}
+                      <span className="sieve-pill-label">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  id="btn-toggle-rotation"
+                  className={`sieve-pause-btn mono ${rotationPaused ? 'is-paused' : ''}`}
+                  aria-pressed={rotationPaused}
+                  aria-label={rotationPaused ? 'Resume 3D logo rotation' : 'Pause 3D logo rotation'}
+                  title={rotationPaused ? 'Resume 3D rotation' : 'Pause 3D rotation'}
+                  onClick={() => {
+                    soundEngine.playTick(rotationPaused ? 780 : 540);
+                    setRotationPaused((p) => !p);
+                  }}
+                >
+                  {rotationPaused ? <Play size={11} /> : <Pause size={11} />}
+                  <span>{rotationPaused ? 'Resume' : 'Pause'}</span>
+                </button>
               </div>
-              <span key={mode} className="sieve-hint mono">
-                {activeMode.hint}
-                {activeMode.desktopHint && (
-                  <span className="desktop-only-inline">{activeMode.desktopHint}</span>
+              <span key={rotationPaused ? 'paused' : mode} className="sieve-hint mono">
+                {rotationPaused ? (
+                  'Rotation paused · drag 360° to inspect any angle'
+                ) : (
+                  <>
+                    {activeMode.hint}
+                    {activeMode.desktopHint && (
+                      <span className="desktop-only-inline">{activeMode.desktopHint}</span>
+                    )}
+                  </>
                 )}
               </span>
             </div>

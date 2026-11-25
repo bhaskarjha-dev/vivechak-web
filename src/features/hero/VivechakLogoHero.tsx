@@ -14,6 +14,7 @@ interface VivechakLogoHeroProps {
   theme: ThemeMode;
   impulseNonce: number;
   impulseText?: string;
+  rotationPaused?: boolean;
   onPulseClick: () => void;
   onSuperDistill?: () => void;
   onTruthPulse?: () => void;
@@ -257,6 +258,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
   theme,
   impulseNonce,
   impulseText = '+1 GRADE A VERIFIED',
+  rotationPaused = false,
   onPulseClick,
   onSuperDistill,
   onTruthPulse,
@@ -272,6 +274,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
 
   const modeRef = useRef<SieveMode>(mode);
   const themeRef = useRef<ThemeMode>(theme);
+  const pausedRef = useRef(rotationPaused);
   const pulseClickRef = useRef(onPulseClick);
   const superCbRef = useRef(onSuperDistill);
   const pulseCbRef = useRef(onTruthPulse);
@@ -282,6 +285,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
 
   modeRef.current = mode;
   themeRef.current = theme;
+  pausedRef.current = rotationPaused;
   pulseClickRef.current = onPulseClick;
   superCbRef.current = onSuperDistill;
   pulseCbRef.current = onTruthPulse;
@@ -638,16 +642,20 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
 
     // 36 Crisp, Deliberate 3D Interactive Claim Droplets (Calibrated for 1× DPR Full HD Clarity!)
     const MAX_CLAIMS = 36;
-    const claimGeom = new THREE.SphereGeometry(0.056, 16, 16);
+    const claimGeom = new THREE.SphereGeometry(0.064, 16, 16);
     const claimMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      metalness: 0.22,
-      roughness: 0.18,
-      emissive: 0x3b2404,
-      emissiveIntensity: 0.48,
+      metalness: 0.12,
+      roughness: 0.24,
+      emissive: 0x000000,
     });
     const claimInst = new THREE.InstancedMesh(claimGeom, claimMat, MAX_CLAIMS);
     claimInst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    claimInst.frustumCulled = false;
+    claimInst.count = 0;
+    // Initialize instanceColor before Frame 1 so USE_INSTANCING_COLOR compiles cleanly
+    claimInst.setColorAt(0, new THREE.Color(0xffffff));
+    if (claimInst.instanceColor) claimInst.instanceColor.setUsage(THREE.DynamicDrawUsage);
     rig.add(claimInst);
 
     const claims: Claim3D[] = [];
@@ -663,11 +671,11 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           : isVerified
             ? (Math.random() - 0.5) * 1.35
             : (Math.random() < 0.5 ? -1 : 1) * (0.75 + Math.random() * 1.25);
-      const y = yWorld !== undefined ? yWorld : 2.35 + Math.random() * 0.45;
+      const y = yWorld !== undefined ? yWorld : 2.38 + Math.random() * 0.42;
       claims.push({
         x,
         y,
-        z: (Math.random() - 0.5) * 0.24,
+        z: (Math.random() - 0.5) * 0.22,
         vx: (Math.random() - 0.5) * 0.2,
         vy: -(0.55 + Math.random() * 0.35),
         vz: (Math.random() - 0.5) * 0.12,
@@ -675,7 +683,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         state: 'entering',
         life: 0,
         maxLife: 3.3 + Math.random() * 1.0,
-        radius: isVerified ? 1.05 : 0.85,
+        radius: isVerified ? 1.08 : 0.88,
       });
     };
 
@@ -926,7 +934,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           tmpVec.set(gesture.velX, gesture.velY, gesture.velZ).normalize();
           cruiseAxis.copy(tmpVec);
           gesture.cruiseSpeed = 0.62;
-          gesture.extraSpeed = Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
+          gesture.extraSpeed = pausedRef.current ? 0 : Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
         } else {
           // User deliberately positioned the logo at an angle: preserve angle with gentle slow cruise
           gesture.cruiseSpeed = 0.36;
@@ -1099,13 +1107,14 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
             const ramp = Math.min(1, (entranceRef.current - 0.25) / 0.45);
             const smoothRamp = ramp * ramp * (3 - 2 * ramp);
             const motionScale = prefersReducedMotion ? 0.35 : 1.0;
-            const activeSpeed = (gesture.cruiseSpeed * gesture.hoverBrake * motionScale + gesture.extraSpeed) * smoothRamp;
+            const baseSpin = pausedRef.current ? 0 : gesture.cruiseSpeed * gesture.hoverBrake * motionScale;
+            const activeSpeed = (baseSpin + gesture.extraSpeed) * smoothRamp;
             if (activeSpeed > 0.002) {
               tmpQ1.setFromAxisAngle(cruiseAxis, activeSpeed * dt);
               userQuat.premultiply(tmpQ1).normalize();
             }
             if (gesture.extraSpeed > 0.004) {
-              gesture.extraSpeed *= Math.exp(-dt * 2.4);
+              gesture.extraSpeed *= Math.exp(-dt * (pausedRef.current ? 4.5 : 2.4));
             } else {
               gesture.extraSpeed = 0;
             }
@@ -1399,7 +1408,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
             m.state = 'deflected';
             m.vx = s * (0.95 + Math.random() * 0.6);
             m.vy = 0.42 + Math.random() * 0.25;
-            m.vz = (Math.random() - 0.5) * 0.5;
+            m.vz = (m.z >= 0 ? 1 : -1) * (0.42 + Math.random() * 0.35);
           } else if (m.y <= ty(150)) {
             if (m.kind === 'verified' && Math.abs(m.x) < 0.85) {
               m.state = 'funneling';
@@ -1408,6 +1417,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
               m.state = 'deflected';
               m.vx = s * (1.1 + Math.random() * 0.55);
               m.vy = 0.22;
+              m.vz = (m.z >= 0 ? 1 : -1) * (0.35 + Math.random() * 0.3);
             }
           }
         } else if (m.state === 'deflected') {
@@ -1421,6 +1431,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           m.vy = Math.max(-2.2, m.vy - 1.6 * dt);
           m.x += m.vx * dt;
           m.y += m.vy * dt;
+          m.z *= 1 - Math.min(1, dt * 3.5);
           if (m.y <= DROP_Y + 0.16) {
             dropVel += 0.52;
             claims.splice(i, 1);
@@ -1428,36 +1439,33 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         }
       }
 
-      for (let i = 0; i < MAX_CLAIMS; i++) {
-        if (i < claims.length) {
-          const m = claims[i];
-          const fade = Math.min(1, (2.65 - m.y) / 0.55) * Math.min(1, (m.maxLife - m.life) / 0.55);
-          const sc = Math.max(0.001, m.radius * Math.max(0, fade));
-          dummy.position.set(m.x, m.y, m.z);
-          if (m.kind === 'verified' && m.state === 'funneling') {
-            dummy.scale.set(sc * 0.88, sc * 1.52, sc * 0.88);
-          } else {
-            dummy.scale.setScalar(sc);
-          }
-          dummy.updateMatrix();
-          claimInst.setMatrixAt(i, dummy.matrix);
-          if (m.kind === 'verified') {
-            tmpCol.setHex(isLight ? 0xc8740a : 0xffcb66);
-          } else if (m.state === 'deflected' || noiseBlend > 0.5) {
-            tmpCol.setHex(isLight ? 0xbd3e36 : 0xe85c54);
-          } else {
-            tmpCol.setHex(isLight ? 0x3b588c : 0x94b2e4);
-          }
-          claimInst.setColorAt(i, tmpCol);
+      const activeClaims = Math.min(claims.length, MAX_CLAIMS);
+      claimInst.count = activeClaims;
+      for (let i = 0; i < activeClaims; i++) {
+        const m = claims[i];
+        const fade = Math.min(1, (2.82 - m.y) / 0.36) * Math.min(1, (m.maxLife - m.life) / 0.55);
+        const sc = Math.max(0.001, m.radius * Math.max(0, fade));
+        dummy.position.set(m.x, m.y, m.z);
+        if (m.kind === 'verified' && m.state === 'funneling') {
+          dummy.scale.set(sc * 0.88, sc * 1.52, sc * 0.88);
         } else {
-          dummy.position.set(0, -50, 0);
-          dummy.scale.setScalar(0.0001);
-          dummy.updateMatrix();
-          claimInst.setMatrixAt(i, dummy.matrix);
+          dummy.scale.setScalar(sc);
         }
+        dummy.updateMatrix();
+        claimInst.setMatrixAt(i, dummy.matrix);
+        if (m.kind === 'verified') {
+          tmpCol.setHex(isLight ? 0xd97d0c : 0xffd26e);
+        } else if (m.state === 'deflected' || noiseBlend > 0.5) {
+          tmpCol.setHex(isLight ? 0xc23c34 : 0xff6b62);
+        } else {
+          tmpCol.setHex(isLight ? 0x34548f : 0x9ec0f5);
+        }
+        claimInst.setColorAt(i, tmpCol);
       }
-      claimInst.instanceMatrix.needsUpdate = true;
-      if (claimInst.instanceColor) claimInst.instanceColor.needsUpdate = true;
+      if (activeClaims > 0) {
+        claimInst.instanceMatrix.needsUpdate = true;
+        if (claimInst.instanceColor) claimInst.instanceColor.needsUpdate = true;
+      }
 
       // Cursor-driven 3D studio light glide + Full 360° Quaternion Orientation & Hold Gravity Zoom!
       const ptrDamp = 1 - Math.exp(-dt * 5.0);
@@ -1467,10 +1475,11 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       keyLight.position.y = 6.2 + pointer.y * 2.2;
 
       // Subtle sculptural breathing pitch tilt layered gently over the continuous 3D rotation
-      const breatheWeight = gesture.customSpin ? 0.16 : 0.45;
+      const isPaused = pausedRef.current;
+      const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.16 : 0.45;
       tmpEuler.set(
         (-pointer.y * 0.08 + Math.sin(elapsed * 0.42) * 0.11) * breatheWeight,
-        pointer.x * 0.12 * (gesture.customSpin ? 0.25 : 0.55),
+        pointer.x * 0.12 * (isPaused ? 0 : gesture.customSpin ? 0.25 : 0.55),
         Math.sin(elapsed * 0.31) * 0.03 * breatheWeight,
         'YXZ'
       );
@@ -1478,7 +1487,8 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       rig.quaternion.copy(userQuat).multiply(baseTiltQ);
       // Avoid unused variable warning for rotAngleFromHome
       void rotAngleFromHome;
-      rig.position.y = 0.22 + Math.sin(elapsed * 0.95) * 0.04;
+      const targetRigY = isPaused ? 0.22 : 0.22 + Math.sin(elapsed * 0.95) * 0.04;
+      rig.position.y += (targetRigY - rig.position.y) * damp;
       camera.position.z = 11.25 - (hoveredRef.current ? 0.14 : 0) - gesture.charge * 0.42;
 
       // Orbital gimbal reticle fades in smoothly ONLY while actively dragging 360°
@@ -1602,6 +1612,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           theme={theme}
           impulseNonce={impulseNonce}
           replayNonce={replayNonce}
+          rotationPaused={rotationPaused}
           onQuickPulse={onPulseClick}
           onSuperDistill={onSuperDistill}
           onTruthPulse={onTruthPulse}
@@ -1624,7 +1635,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           )}
         </AnimatePresence>
         {hoveredStage && !hasInteracted && !hudLabel && mode === 'sift' && (
-          <span className="logo-first-whisper mono">DRAG TO SPIN · FLICK SETS AXIS · HOLD TO DISTILL</span>
+          <span className="logo-first-whisper mono">DRAG TO SPIN · HOLD TO DISTILL</span>
         )}
         {hudLabel && <span className="logo-hud-chip mono">{hudLabel}</span>}
       </div>

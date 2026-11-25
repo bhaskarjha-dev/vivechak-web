@@ -254,18 +254,24 @@
 
 .logo-first-whisper {
   position: absolute;
-  bottom: 0.42rem;
-  left: 0.35rem;
-  padding: 0.24rem 0.68rem;
+  top: 0.35rem;
+  left: 0;
+  right: 0;
+  width: fit-content;
+  max-width: calc(100% - 1rem);
+  margin-inline: auto;
+  padding: 0.22rem 0.64rem;
   border-radius: var(--r-pill);
   background: rgba(10, 16, 30, 0.82);
   border: 1px solid rgba(242, 163, 58, 0.32);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  font-size: 0.6rem;
-  letter-spacing: 0.11em;
+  font-size: 0.59rem;
+  letter-spacing: 0.1em;
   color: rgba(247, 212, 146, 0.9);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
   animation: whisperFadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -480,6 +486,14 @@
   z-index: 5;
 }
 
+.sieve-controls-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .sieve-pills {
   display: inline-flex;
   padding: 3px;
@@ -487,6 +501,35 @@
   border: 1px solid var(--border-dark);
   border-radius: var(--r-pill);
   backdrop-filter: blur(10px);
+}
+
+.sieve-pause-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--r-pill);
+  color: var(--ink-soft);
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.sieve-pause-btn:hover {
+  color: var(--ink-light);
+  border-color: var(--border-dark-strong);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sieve-pause-btn.is-paused {
+  color: var(--saffron-bright);
+  border-color: rgba(242, 163, 58, 0.48);
+  background: rgba(242, 163, 58, 0.12);
 }
 
 .sieve-pill {

@@ -246,6 +246,24 @@ html[data-theme='light'],
   background: #12203f;
 }
 
+[data-theme='light'] .sieve-pause-btn {
+  background: #ebe4d5;
+  border-color: rgba(18, 32, 63, 0.2);
+  color: #43506b;
+}
+
+[data-theme='light'] .sieve-pause-btn:hover {
+  color: #12203f;
+  border-color: rgba(18, 32, 63, 0.35);
+  background: #e3dac7;
+}
+
+[data-theme='light'] .sieve-pause-btn.is-paused {
+  background: #12203f;
+  border-color: #12203f;
+  color: #faf8f2;
+}
+
 [data-theme='light'] .sieve-hint {
   color: #58647c;
 }

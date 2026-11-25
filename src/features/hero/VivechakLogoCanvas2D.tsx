@@ -24,6 +24,7 @@ interface VivechakLogoCanvas2DProps {
   impulseNonce: number;
   replayNonce: number;
   resetAxisNonce?: number;
+  rotationPaused?: boolean;
   onQuickPulse?: () => void;
   onSuperDistill?: () => void;
   onTruthPulse?: () => void;
@@ -87,6 +88,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
   impulseNonce,
   replayNonce,
   resetAxisNonce = 0,
+  rotationPaused = false,
   onQuickPulse,
   onSuperDistill,
   onTruthPulse,
@@ -95,6 +97,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const modeRef = useRef<SieveMode>(mode);
   const themeRef = useRef<ThemeMode>(theme);
+  const pausedRef = useRef(rotationPaused);
   const quickCbRef = useRef(onQuickPulse);
   const superCbRef = useRef(onSuperDistill);
   const pulseCbRef = useRef(onTruthPulse);
@@ -108,6 +111,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
 
   modeRef.current = mode;
   themeRef.current = theme;
+  pausedRef.current = rotationPaused;
   quickCbRef.current = onQuickPulse;
   superCbRef.current = onSuperDistill;
   pulseCbRef.current = onTruthPulse;
@@ -470,7 +474,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
             gesture.velZ / releaseSpeed,
           ];
           gesture.cruiseSpeed = 0.62;
-          gesture.extraSpeed = Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
+          gesture.extraSpeed = pausedRef.current ? 0 : Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
         } else {
           gesture.cruiseSpeed = 0.36;
           gesture.extraSpeed = 0;
@@ -1172,12 +1176,13 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
             const ramp = Math.min(1, (entranceRef.current - 0.25) / 0.45);
             const smoothRamp = ramp * ramp * (3 - 2 * ramp);
             const motionScale = prefersReducedMotion ? 0.35 : 1.0;
-            const activeSpeed = (gesture.cruiseSpeed * gesture.hoverBrake * motionScale + gesture.extraSpeed) * smoothRamp;
+            const baseSpin = pausedRef.current ? 0 : gesture.cruiseSpeed * gesture.hoverBrake * motionScale;
+            const activeSpeed = (baseSpin + gesture.extraSpeed) * smoothRamp;
             if (activeSpeed > 0.002) {
               userQuat = quatNormalize(quatMultiply(quatFromAxisAngle(cruiseAxis, activeSpeed * dt), userQuat));
             }
             if (gesture.extraSpeed > 0.004) {
-              gesture.extraSpeed *= Math.exp(-dt * 2.4);
+              gesture.extraSpeed *= Math.exp(-dt * (pausedRef.current ? 4.5 : 2.4));
             } else {
               gesture.extraSpeed = 0;
             }
@@ -1370,12 +1375,13 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       ctx.clearRect(0, 0, cw, chH);
 
       const unit = Math.min(cw, chH) / 512;
-      const floatY = Math.sin(elapsed * 0.95) * 3.4;
+      const isPaused = pausedRef.current;
+      const floatY = isPaused ? 0 : Math.sin(elapsed * 0.95) * 3.4;
       const useFull3D = ent >= 0.35 || rotAngleFromHome > 0.012 || forceOrbitPreview || forceFlipPreview;
       const targetGuide = gesture.mode === 'orbit' || forceOrbitPreview || forceFlipPreview ? 1 : 0;
       orbitGuide += (targetGuide - orbitGuide) * (1 - Math.exp(-dt * 9));
-      const totalYaw = pointer.x * 0.14;
-      const totalPitch = pointer.y * 0.08;
+      const totalYaw = isPaused ? 0 : pointer.x * 0.14;
+      const totalPitch = isPaused ? 0 : pointer.y * 0.08;
       const sheenShift = Math.sin(elapsed * 0.55) * 60 + totalYaw * 165;
       const chargeScale = 1 + ch * 0.036;
 
@@ -1385,11 +1391,11 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
 
       if (useFull3D) {
         // Layer a whisper-gentle sculptural breathing pitch tilt on top of userQuat
-        const breatheWeight = gesture.customSpin ? 0.16 : 0.45;
+        const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.16 : 0.45;
         const breatheQ = quatNormalize(
           quatMultiply(
             quatFromAxisAngle([1, 0, 0], (-pointer.y * 0.07 + Math.sin(elapsed * 0.42) * 0.10) * breatheWeight),
-            quatFromAxisAngle([0, 1, 0], pointer.x * 0.10 * (gesture.customSpin ? 0.25 : 0.5))
+            quatFromAxisAngle([0, 1, 0], pointer.x * 0.10 * (isPaused ? 0 : gesture.customSpin ? 0.25 : 0.5))
           )
         );
         const renderQ = quatNormalize(quatMultiply(userQuat, breatheQ));
