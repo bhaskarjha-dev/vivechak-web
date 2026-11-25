@@ -30,6 +30,118 @@ import { navigate } from '@/shared/lib/router';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
 
+const DOC_LINK_MAP: Record<string, string> = {
+  'quickstart.md': '/docs/quickstart',
+  'host-setup.md': '/docs/hosts',
+  'manual-workflow.md': '/docs/manual-workflow',
+  'parallel-execution.md': '/docs/hybrid-parallel',
+  'hybrid-execution.md': '/docs/hybrid-parallel',
+  'troubleshooting.md': '/docs/cli',
+  'tools.md': '/docs/mcp-reference',
+  'mcp-tools.md': '/docs/mcp-reference',
+  'gate.md': '/docs/gate-rules',
+  'codes.md': '/docs/codes',
+  'framework.md': '/docs/methodology',
+};
+
+function resolveDocHref(rawHref: string, sourceFile: string): { href: string; external: boolean } {
+  const trimmed = rawHref.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return { href: trimmed, external: true };
+  }
+  if (trimmed.startsWith('#')) {
+    return { href: trimmed, external: false };
+  }
+  const [filePart, hashPart] = trimmed.split('#');
+  const baseName = filePart.split('/').pop()?.toLowerCase() ?? '';
+  if (DOC_LINK_MAP[baseName]) {
+    return {
+      href: `${DOC_LINK_MAP[baseName]}${hashPart ? `#${hashPart}` : ''}`,
+      external: false,
+    };
+  }
+  // Resolve relative repo paths (e.g. ../GENERATOR-PROJECT.md, SAMPLE-COMPARISON.md, dogfood/research/)
+  const srcDir = sourceFile.includes('/') ? sourceFile.slice(0, sourceFile.lastIndexOf('/')) : '';
+  const parts = (srcDir ? `${srcDir}/${filePart}` : filePart).split('/');
+  const resolved: string[] = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') resolved.pop();
+    else resolved.push(part);
+  }
+  const repoRel = resolved.join('/');
+  const isDir = filePart.endsWith('/');
+  const kind = isDir ? 'tree' : 'blob';
+  return {
+    href: `https://github.com/bhaskarjha-dev/vivechak/${kind}/main/${repoRel}${hashPart ? `#${hashPart}` : ''}`,
+    external: true,
+  };
+}
+
+/**
+ * Pure-React inline Markdown renderer for documentation prose, bullets, callouts, and table cells.
+ * Handles inline code (`...`), links ([label](url)), bold (**...**), and italic (*...*) with zero dangerouslySetInnerHTML.
+ */
+function renderInlineMarkdown(text: string, sourceFile: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const tokenRe = /(\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*\n]+)\*)/g;
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = tokenRe.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      nodes.push(text.slice(lastIdx, match.index));
+    }
+    const k = `${keyPrefix}-${idx++}`;
+    if (match[2] !== undefined && match[3] !== undefined) {
+      const linkText = match[2];
+      const { href, external } = resolveDocHref(match[3], sourceFile);
+      const inner = renderInlineMarkdown(linkText, sourceFile, `${k}-in`);
+      if (external) {
+        nodes.push(
+          <a key={k} href={href} target="_blank" rel="noreferrer" className="doc-inline-link">
+            {inner}
+          </a>
+        );
+      } else {
+        nodes.push(
+          <a
+            key={k}
+            href={href}
+            className="doc-inline-link"
+            onClick={(e) => {
+              if (href.startsWith('/')) {
+                e.preventDefault();
+                soundEngine.playTick(740);
+                navigate(href);
+              }
+            }}
+          >
+            {inner}
+          </a>
+        );
+      }
+    } else if (match[4] !== undefined) {
+      nodes.push(
+        <code key={k} className="doc-inline-code mono">
+          {match[4]}
+        </code>
+      );
+    } else if (match[5] !== undefined) {
+      nodes.push(<strong key={k}>{renderInlineMarkdown(match[5], sourceFile, `${k}-b`)}</strong>);
+    } else if (match[6] !== undefined) {
+      nodes.push(<em key={k}>{match[6]}</em>);
+    }
+    lastIdx = tokenRe.lastIndex;
+  }
+
+  if (lastIdx < text.length) {
+    nodes.push(text.slice(lastIdx));
+  }
+  return nodes;
+}
+
 interface DocsPortalProps {
   slug: string;
   onLaunchAuditorPreset: (presetId: string) => void;
@@ -88,8 +200,14 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
       case 'text':
         return (
           <p key={key} className="doc-p">
-            {block.body}
+            {renderInlineMarkdown(block.body, page.sourceFile, key)}
           </p>
+        );
+      case 'subheading':
+        return (
+          <h3 key={key} className="docs-h3">
+            {renderInlineMarkdown(block.text, page.sourceFile, key)}
+          </h3>
         );
       case 'callout': {
         const Icon = block.tone === 'warn' ? AlertTriangle : block.tone === 'tip' ? Lightbulb : Info;
@@ -97,8 +215,8 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
           <div key={key} className={`doc-callout tone-${block.tone}`}>
             <Icon size={16} className="doc-callout-ico" />
             <div>
-              <strong>{block.title}</strong>
-              <p>{block.body}</p>
+              <strong>{renderInlineMarkdown(block.title, page.sourceFile, `${key}-t`)}</strong>
+              <p>{renderInlineMarkdown(block.body, page.sourceFile, `${key}-b`)}</p>
             </div>
           </div>
         );
@@ -146,9 +264,9 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
             <table className="doc-table">
               <thead>
                 <tr>
-                  {block.headers.map((h) => (
-                    <th key={h} className="mono">
-                      {h}
+                  {block.headers.map((h, hIdx) => (
+                    <th key={`${h}-${hIdx}`} className="mono">
+                      {renderInlineMarkdown(h, page.sourceFile, `${key}-th-${hIdx}`)}
                     </th>
                   ))}
                 </tr>
@@ -157,8 +275,8 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
                 {block.rows.map((row, rIdx) => (
                   <tr key={rIdx}>
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} className={cIdx === 0 ? 'doc-td-lead mono' : ''}>
-                        {cell}
+                      <td key={cIdx} className={cIdx === 0 ? 'doc-td-lead' : ''}>
+                        {renderInlineMarkdown(cell, page.sourceFile, `${key}-td-${rIdx}-${cIdx}`)}
                       </td>
                     ))}
                   </tr>
@@ -167,17 +285,23 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
             </table>
           </div>
         );
-      case 'bullets':
+      case 'bullets': {
+        const ListTag = block.ordered ? 'ol' : 'ul';
         return (
-          <ul key={key} className="doc-bullets">
+          <ListTag key={key} className={`doc-bullets ${block.ordered ? 'is-ordered' : ''}`}>
             {block.items.map((it, idx) => (
               <li key={idx}>
-                {it.lead && <strong className="doc-bullet-lead">{it.lead} </strong>}
-                <span>{it.text}</span>
+                {it.lead && (
+                  <strong className="doc-bullet-lead">
+                    {renderInlineMarkdown(it.lead, page.sourceFile, `${key}-l-${idx}`)}{' '}
+                  </strong>
+                )}
+                <span>{renderInlineMarkdown(it.text, page.sourceFile, `${key}-t-${idx}`)}</span>
               </li>
             ))}
-          </ul>
+          </ListTag>
         );
+      }
       case 'auditor-cta':
         return (
           <div key={key} className="doc-auditor-banner">
@@ -332,11 +456,11 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
             {page.sections.map((sec) => (
               <section key={sec.id} id={sec.id} className="docs-sec">
                 <h2 className="docs-h2">
-                  <span>{sec.heading}</span>
+                  <span>{renderInlineMarkdown(sec.heading, page.sourceFile, `h2-${sec.id}`)}</span>
                   <button
                     type="button"
                     className="docs-anchor-btn"
-                    aria-label={`Copy direct link to ${sec.heading}`}
+                    aria-label={`Copy direct link to ${sec.heading.replace(/`/g, '')}`}
                     title="Copy direct section link"
                     onClick={() => {
                       const origin =
@@ -359,14 +483,14 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
           </div>
 
           <div className="docs-source-row mono">
-            <span>Grounded in Vivechak v0.1.0 release specification</span>
+            <span>Synced from {page.sourceFile} · Vivechak v0.1.0</span>
             <a
-              href="https://github.com/bhaskarjha-dev/vivechak/tree/main/docs"
+              href={`https://github.com/bhaskarjha-dev/vivechak/blob/main/${page.sourceFile}`}
               target="_blank"
               rel="noreferrer"
               className="docs-source-link"
             >
-              <span>View source docs on GitHub</span>
+              <span>View {page.sourceFile} on GitHub</span>
               <ArrowUpRight size={12} />
             </a>
           </div>
@@ -427,7 +551,7 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
                     document.getElementById(sec.id)?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  {sec.heading}
+                  {sec.heading.replace(/`/g, '')}
                 </a>
               ))}
             </div>

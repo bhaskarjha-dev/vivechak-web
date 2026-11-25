@@ -14,7 +14,7 @@ export function getRoutes(): PrerenderMeta[] {
   return [
     {
       route: '/',
-      title: 'Vivechak — Sift Truth Before Code',
+      title: 'Vivechak — Prove Decisions Before Code',
       description:
         'Make AI coding agents prove hard architectural decisions with cited research (Grade A-E), red-team SHA-256 checks, and human sign-off — stored locally in plain Git Markdown.',
     },

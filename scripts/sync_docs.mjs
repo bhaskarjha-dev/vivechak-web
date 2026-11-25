@@ -46,17 +46,39 @@ async function readRepoFile(relPath) {
 }
 
 function cleanSlug(text) {
-  return text
-    .toLowerCase()
-    .replace(/^\d+[\.\-\s]+/, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '') || 'section';
+  return (
+    text
+      .toLowerCase()
+      .replace(/^\d+[\.\-\s]+/, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'section'
+  );
+}
+
+function splitTableRow(line) {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const cells = [];
+  let cur = '';
+  for (let idx = 0; idx < trimmed.length; idx++) {
+    const ch = trimmed[idx];
+    if (ch === '\\' && trimmed[idx + 1] === '|') {
+      cur += '|';
+      idx++;
+    } else if (ch === '|') {
+      cells.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur.trim());
+  return cells;
 }
 
 function parseMarkdownToBlocks(markdown, options = {}) {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n');
   const sections = [];
-  let currentSec = { id: 'overview', heading: 'Overview', blocks: [] };
+  let currentSec = { id: 'overview', heading: 'Overview', blocks: [], implicit: true };
 
   let i = 0;
   while (i < lines.length) {
@@ -65,16 +87,39 @@ function parseMarkdownToBlocks(markdown, options = {}) {
     // ## Section Heading
     const h2Match = line.match(/^##\s+(.+)$/);
     if (h2Match) {
-      if (currentSec.blocks.length > 0 || currentSec.heading !== 'Overview') {
-        sections.push(currentSec);
-      }
       const rawHeading = h2Match[1].trim();
+      const cleanedHeading = rawHeading.replace(/^\d+\.\s*/, '');
       const customId = options.slugMap?.[rawHeading] || cleanSlug(rawHeading);
+
+      // Avoid consecutive duplicate "Overview" sections when markdown starts with an intro quote followed by "## Overview"
+      if (currentSec.implicit && cleanedHeading.toLowerCase() === 'overview') {
+        currentSec.implicit = false;
+        currentSec.id = customId;
+        currentSec.heading = cleanedHeading;
+        i++;
+        continue;
+      }
+
+      if (currentSec.blocks.length > 0 || !currentSec.implicit) {
+        sections.push({ id: currentSec.id, heading: currentSec.heading, blocks: currentSec.blocks });
+      }
       currentSec = {
         id: customId,
-        heading: rawHeading.replace(/^\d+\.\s*/, ''),
+        heading: cleanedHeading,
         blocks: [],
+        implicit: false,
       };
+      i++;
+      continue;
+    }
+
+    // ### or #### Subheading
+    const h3Match = line.match(/^#{3,4}\s+(.+)$/);
+    if (h3Match) {
+      currentSec.blocks.push({
+        type: 'subheading',
+        text: h3Match[1].trim(),
+      });
       i++;
       continue;
     }
@@ -88,7 +133,6 @@ function parseMarkdownToBlocks(markdown, options = {}) {
     // Workflow Diagram Detection
     if (line.includes('workflow-dark.svg') || line.includes('workflow-light.svg')) {
       currentSec.blocks.push({ type: 'workflow-diagram' });
-      // Skip accompanying picture tags or image lines
       while (i < lines.length && !lines[i].includes('</picture>') && !lines[i].includes('</p>')) {
         i++;
       }
@@ -106,8 +150,8 @@ function parseMarkdownToBlocks(markdown, options = {}) {
       i++;
       while (i < lines.length && lines[i].startsWith('>')) {
         let bLine = lines[i].replace(/^>\s?/, '');
-        if (!title && bLine.startsWith('**')) {
-          const boldMatch = bLine.match(/^\*\*([^*]+)\*\*(.*)$/);
+        if (!alertMatch[2].trim() && bodyLines.length === 0 && bLine.startsWith('**')) {
+          const boldMatch = bLine.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
           if (boldMatch) {
             title = boldMatch[1];
             bLine = boldMatch[2].trim();
@@ -144,21 +188,38 @@ function parseMarkdownToBlocks(markdown, options = {}) {
       continue;
     }
 
-    // Code Fence (```)
-    const codeMatch = line.match(/^```([a-zA-Z0-9_\-\.]*)\s*(.*)$/);
+    // Code Fence (supports 3+ backticks cleanly so nested ``` inside ```` never breaks)
+    const codeMatch = line.match(/^(`{3,})([a-zA-Z0-9_\-\.]*)\s*(.*)$/);
     if (codeMatch) {
-      let lang = (codeMatch[1] || 'markdown').toLowerCase();
-      if (['bash', 'sh', 'shell', 'zsh'].includes(lang)) lang = 'markdown';
+      const fence = codeMatch[1];
+      const rawLang = (codeMatch[2] || 'markdown').toLowerCase();
+      let lang = rawLang;
+      if (['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'text', 'txt', 'prompt', 'mermaid'].includes(lang)) {
+        lang = 'markdown';
+      }
       if (!['markdown', 'json', 'yaml'].includes(lang)) lang = 'markdown';
 
-      const label = codeMatch[2].trim() || options.codeLabels?.[currentSec.id] || (lang === 'json' ? 'JSON' : lang === 'yaml' ? 'YAML' : 'Terminal');
+      const defaultLabel =
+        rawLang === 'mermaid'
+          ? 'Mermaid Diagram'
+          : rawLang === 'prompt'
+            ? 'Prompt Block'
+            : ['bash', 'sh', 'shell', 'zsh'].includes(rawLang)
+              ? 'Terminal'
+              : lang === 'json'
+                ? 'JSON'
+                : lang === 'yaml'
+                  ? 'YAML'
+                  : 'Markdown';
+      const label = codeMatch[3].trim() || options.codeLabels?.[currentSec.id] || defaultLabel;
       const codeLines = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
+      const closeFenceRe = new RegExp(`^${fence}\\s*$`);
+      while (i < lines.length && !closeFenceRe.test(lines[i])) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      i++; // skip closing fence
       currentSec.blocks.push({
         type: 'code',
         lang,
@@ -170,15 +231,14 @@ function parseMarkdownToBlocks(markdown, options = {}) {
 
     // Markdown Table (| header | header |)
     if (line.startsWith('|') && line.includes('|', 1)) {
-      const headers = line.split('|').slice(1, -1).map((c) => c.trim());
+      const headers = splitTableRow(line);
       i++;
-      // Skip separator row |---|---|
       if (i < lines.length && lines[i].startsWith('|') && lines[i].includes('---')) {
         i++;
       }
       const rows = [];
       while (i < lines.length && lines[i].startsWith('|') && lines[i].includes('|', 1)) {
-        const row = lines[i].split('|').slice(1, -1).map((c) => c.trim().replace(/\\\|/g, '|'));
+        const row = splitTableRow(lines[i]);
         rows.push(row);
         i++;
       }
@@ -192,12 +252,12 @@ function parseMarkdownToBlocks(markdown, options = {}) {
       continue;
     }
 
-    // Bullet List (- item or * item)
+    // Unordered Bullet List (- item or * item)
     if (line.match(/^[\-\*]\s+/)) {
       const items = [];
       while (i < lines.length && lines[i].match(/^[\-\*]\s+/)) {
         const rawItem = lines[i].replace(/^[\-\*]\s+/, '').trim();
-        const boldLeadMatch = rawItem.match(/^(\*\*[^*]+\*\*|`[^`]+`:?)\s*(.*)$/);
+        const boldLeadMatch = rawItem.match(/^(\*\*[^*]+\*\*:?|`[^`]+`:?)\s+(.*)$/);
         if (boldLeadMatch) {
           items.push({
             lead: boldLeadMatch[1].replace(/\*\*/g, '').trim(),
@@ -217,6 +277,32 @@ function parseMarkdownToBlocks(markdown, options = {}) {
       continue;
     }
 
+    // Ordered List (1. item)
+    if (line.match(/^\d+\.\s+/)) {
+      const items = [];
+      while (i < lines.length && lines[i].match(/^\d+\.\s+/)) {
+        const rawItem = lines[i].replace(/^\d+\.\s+/, '').trim();
+        const boldLeadMatch = rawItem.match(/^(\*\*[^*]+\*\*:?|`[^`]+`:?)\s+(.*)$/);
+        if (boldLeadMatch) {
+          items.push({
+            lead: boldLeadMatch[1].replace(/\*\*/g, '').trim(),
+            text: boldLeadMatch[2].trim(),
+          });
+        } else {
+          items.push({ text: rawItem });
+        }
+        i++;
+      }
+      if (items.length > 0) {
+        currentSec.blocks.push({
+          type: 'bullets',
+          ordered: true,
+          items,
+        });
+      }
+      continue;
+    }
+
     // Plain Text Paragraph
     if (line.trim().length > 0) {
       const textLines = [line.trim()];
@@ -225,19 +311,22 @@ function parseMarkdownToBlocks(markdown, options = {}) {
         i < lines.length &&
         lines[i].trim().length > 0 &&
         !lines[i].startsWith('#') &&
-        !lines[i].startsWith('```') &&
+        !lines[i].match(/^`{3,}/) &&
         !lines[i].startsWith('|') &&
         !lines[i].startsWith('>') &&
-        !lines[i].startsWith('- ') &&
-        !lines[i].startsWith('* ')
+        !lines[i].match(/^[\-\*]\s+/) &&
+        !lines[i].match(/^\d+\.\s+/)
       ) {
         textLines.push(lines[i].trim());
         i++;
       }
-      currentSec.blocks.push({
-        type: 'text',
-        body: textLines.join(' ').replace(/<[^>]+>/g, ''),
-      });
+      const cleaned = textLines.join(' ').replace(/<(?!https?:\/\/)[^>]+>/g, '').trim();
+      if (cleaned) {
+        currentSec.blocks.push({
+          type: 'text',
+          body: cleaned,
+        });
+      }
       continue;
     }
 
@@ -245,11 +334,61 @@ function parseMarkdownToBlocks(markdown, options = {}) {
   }
 
   if (currentSec.blocks.length > 0) {
-    sections.push(currentSec);
+    sections.push({ id: currentSec.id, heading: currentSec.heading, blocks: currentSec.blocks });
   }
 
-  return sections.filter((s) => s.blocks.length > 0);
+  // Deduplicate section IDs cleanly
+  const seenIds = new Map();
+  return sections
+    .filter((s) => s.blocks.length > 0)
+    .map((s) => {
+      const count = seenIds.get(s.id) || 0;
+      seenIds.set(s.id, count + 1);
+      return count === 0 ? s : { ...s, id: `${s.id}-${count + 1}` };
+    });
 }
+
+function extractScopesGuide(frameworkMd) {
+  const sec1 = frameworkMd.match(/##\s+1\.\s+Executive Philosophy[\s\S]*?(?=###\s+How Project Scope Operates|##\s+2\.)/i)?.[0] || '';
+  const p2 = frameworkMd.match(/###\s+P2:\s+Reversibility-Calibrated Rigor[\s\S]*?(?=###\s+P3:)/i)?.[0] || '';
+  const sec9 = frameworkMd.match(/##\s+9\.\s+Multi-Scope Research[\s\S]*?(?=##\s+10\.)/i)?.[0] || '';
+
+  return [
+    '# The Three Scopes — Comparison, Decision & Project',
+    '',
+    sec1.trim(),
+    '',
+    '## Reversibility-Calibrated Rigor (Principle P2)',
+    '',
+    p2.replace(/^###\s+P2:[^\n]*\n?/, '').trim(),
+    '',
+    sec9.trim(),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+const CLI_REFERENCE_PREAMBLE = `## CLI Subcommands Reference
+
+Vivechak installs both \`vivechak\` and the shorthand alias \`vck\` (~9 MB static Go binary, zero runtime dependencies, zero outbound telemetry).
+
+| Command | Usage | Purpose |
+|---|---|---|
+| \`vck setup [host\\|path]\` | \`vck setup cursor --dry-run\` | Auto-detect and safely merge Vivechak into 10 verified MCP hosts with timestamped \`.vivechak-bak-<ts>\` backups. |
+| \`vck serve\` | \`vck serve\` | Start the local stdio MCP server (9 tools, 4 prompts, 8 resources). Default subcommand when invoked over a pipe. |
+| \`vck doctor [path]\` | \`vck doctor\` | Verify workspace confinement, \`research/\` structure, YAML frontmatter syntax, and stale red-team or sign-off hashes. |
+| \`vck gate [flags] [path]\` | \`vck gate --track all --verbose\` | Mechanically evaluate Phase 0 Exit Gate rules G1–G12 and write \`research/PHASE-0-GATE.md\`. Exits 0 on PASS, 1 on FAIL. |
+| \`vck signoff <D-id>\` | \`vck signoff D-001 --reviewer "Jane Doe"\` | Interactive \`/dev/tty\` human attestation binding SHA-256 \`reviewed_hash\` into a One-Way Door ADR. Refuses non-TTY automation (\`E-TTY-REQUIRED\`). |
+| \`vck mcp-config\` | \`vck mcp-config\` | Output a universal pipeable MCP JSON configuration snippet for custom clients. |
+| \`vck version\` | \`vck version\` | Print installed binary version, commit SHA, and build timestamp (aliases: \`--version\`, \`-v\`). |
+
+\`\`\`sh
+# Inspect workspace health & run headless CI merge gate
+vck doctor
+vck gate --track all --format json
+\`\`\`
+
+`;
 
 // Complete Manifest of All 11 Core Documentation Pages
 const DOC_PAGE_DEFS = [
@@ -262,14 +401,15 @@ const DOC_PAGE_DEFS = [
     readMinutes: 4,
     src: 'docs/QUICKSTART.md',
     postProcess: (sections) => {
-      // Inject auditor CTA on first-decision
-      const sec = sections.find((s) => s.id.includes('first-decision') || s.id.includes('decision'));
+      const sec =
+        sections.find((s) => s.id.includes('smaller-scope') || s.id.includes('running-example')) ||
+        sections[sections.length - 1];
       if (sec) {
         sec.blocks.push({
           type: 'auditor-cta',
-          presetId: 'sample-comparison',
+          presetId: 'comparison-wep',
           label: 'Launch Pino vs Winston Comparison in Playground',
-          desc: 'Simulate how Vivechak structures 2–5 option comparisons with WEP scoring and ±20% sensitivity checks.',
+          desc: 'Inspect a real C-001 Weighted Evaluation Protocol (WEP) matrix with ±20% weight sensitivity and Grade A–E citations.',
         });
       }
       return sections;
@@ -315,14 +455,27 @@ const DOC_PAGE_DEFS = [
     shortTitle: 'Examples',
     description: 'Concrete walkthroughs across all 3 scope levels, plus real-world dogfood decision records audited continuously in CI.',
     src: 'examples/README.md',
+    postProcess: (sections) => {
+      const sec = sections[sections.length - 1];
+      if (sec) {
+        sec.blocks.push({
+          type: 'auditor-cta',
+          presetId: 'dogfood-mcp',
+          label: 'Audit Vivechak’s Own 13→9 Tool Dogfood ADR',
+          desc: 'Open the real D-001 dogfood ADR from examples/dogfood/ inside the live in-browser Phase 0 Gate Auditor.',
+        });
+      }
+      return sections;
+    },
   },
   {
     slug: 'cli',
     group: 'Reference',
-    title: 'CLI Commands & Diagnostic Codes',
+    title: 'CLI Commands & Troubleshooting',
     shortTitle: 'CLI Reference',
-    description: 'Complete reference for vck subcommands (doctor, gate, setup, signoff, mcp-config, serve) and fail-closed exit codes.',
+    description: 'Complete reference for vck subcommands (setup, serve, doctor, gate, signoff, mcp-config, version) and diagnostic troubleshooting.',
     src: 'docs/TROUBLESHOOTING.md',
+    prependMarkdown: CLI_REFERENCE_PREAMBLE,
   },
   {
     slug: 'mcp-reference',
@@ -344,9 +497,9 @@ const DOC_PAGE_DEFS = [
       if (sec) {
         sec.blocks.push({
           type: 'auditor-cta',
-          presetId: 'sample-project',
-          label: 'Test Phase 0 Gate in Live Playground',
-          desc: 'Simulate full Track A and Track B exit evaluations against real ADRs with real-time rule clearance indicators.',
+          presetId: 'passing-adr',
+          label: 'Audit Sealed ClickHouse ADR in Live Playground',
+          desc: 'Test Track B rules G5–G11, red-team SHA-256 parity, and human sign-off attestation against a real ADR.',
         });
       }
       return sections;
@@ -357,7 +510,7 @@ const DOC_PAGE_DEFS = [
     group: 'Reference',
     title: 'Diagnostic & Quality Coaching Codes (E-*, W-*, Q-*)',
     shortTitle: 'Error Codes',
-    description: 'Catalog of all 78 operational errors, structural validation diagnostics, warnings, and non-blocking real-time quality coach codes.',
+    description: 'Catalog of operational errors, structural validation diagnostics, warnings, and non-blocking real-time quality coach codes.',
     src: 'docs/reference/codes.md',
   },
   {
@@ -383,10 +536,10 @@ async function syncDocs() {
 
     let markdown = rawContent;
     if (def.scopeSectionOnly) {
-      const scopeMatch = markdown.match(/##\s+Principle\s+2:\s+Reversibility-Calibrated\s+Rigor[\s\S]*?(?=##\s+Principle\s+3|$)/i);
-      if (scopeMatch) {
-        markdown = `# The Three Scopes\n\n> Calibrate research investment to reversal risk.\n\n` + scopeMatch[0];
-      }
+      markdown = extractScopesGuide(markdown);
+    }
+    if (def.prependMarkdown) {
+      markdown = `${def.prependMarkdown}\n${markdown}`;
     }
 
     let sections = parseMarkdownToBlocks(markdown);
@@ -395,7 +548,7 @@ async function syncDocs() {
     }
 
     const wordCount = markdown.split(/\s+/).filter(Boolean).length;
-    const readMinutes = def.readMinutes || Math.max(3, Math.ceil(wordCount / 200));
+    const readMinutes = def.readMinutes || Math.max(3, Math.ceil(wordCount / 220));
 
     compiledPages.push({
       slug: def.slug,
@@ -404,24 +557,79 @@ async function syncDocs() {
       shortTitle: def.shortTitle,
       description: def.description,
       readMinutes,
+      sourceFile: def.src,
       sections,
     });
     console.log(`[sync-docs] ✓ Processed ${def.slug} from ${def.src} (${sections.length} sections)`);
   }
 
-  // Generate TypeScript code for docsData.ts
+  // 1. Lightweight Docs Manifest (~2 KB) for App.tsx route resolution & SEO metadata without loading 340 KB docs bundle on `/`
+  const manifestPages = compiledPages.map(({ slug, group, title, shortTitle, description, readMinutes, sourceFile }) => ({
+    slug,
+    group,
+    title,
+    shortTitle,
+    description,
+    readMinutes,
+    sourceFile,
+  }));
+
+  const manifestContent = `/**
+ * AUTO-GENERATED by scripts/sync_docs.mjs from core repository markdown.
+ * Lightweight route manifest kept separate from full docs content so landing '/' stays fast.
+ */
+
+export type DocGroup = 'Get Started' | 'Workflows' | 'Reference' | 'Architecture';
+
+export interface DocPageMeta {
+  slug: string;
+  group: DocGroup;
+  title: string;
+  shortTitle: string;
+  description: string;
+  readMinutes: number;
+  sourceFile: string;
+}
+
+export const DOC_GROUPS: DocGroup[] = [
+  'Get Started',
+  'Workflows',
+  'Reference',
+  'Architecture',
+];
+
+export const DOC_MANIFEST: DocPageMeta[] = ${JSON.stringify(manifestPages, null, 2)};
+
+export function hasDocPage(slug: string): boolean {
+  return DOC_MANIFEST.some((p) => p.slug === slug);
+}
+
+export function findDocMeta(slug: string): DocPageMeta {
+  return DOC_MANIFEST.find((p) => p.slug === slug) ?? DOC_MANIFEST[0];
+}
+`;
+
+  const manifestPath = path.join(WEB_ROOT, 'src', 'features', 'docs', 'docsManifest.ts');
+  fs.writeFileSync(manifestPath, manifestContent, 'utf-8');
+
+  // 2. Full Documentation Data (lazy-loaded on /docs/* and CommandPalette)
   const tsContent = `/**
  * AUTO-GENERATED by scripts/sync_docs.mjs from core repository markdown.
- * DO NOT EDIT MANUALLY. Run 'npm run sync-docs' or 'npm run build' to regenerate.
+ * DO NOT EDIT MANUALLY. Run 'pnpm run sync-docs' or 'pnpm run build' to regenerate.
  * Source: github.com/bhaskarjha-dev/vivechak (v0.1.0)
  */
 
+import { DOC_GROUPS, type DocGroup, type DocPageMeta } from './docsManifest';
+
+export { DOC_GROUPS, type DocGroup, type DocPageMeta };
+
 export type DocBlock =
   | { type: 'text'; body: string }
+  | { type: 'subheading'; text: string }
   | { type: 'callout'; tone: 'tip' | 'warn' | 'note'; title: string; body: string }
   | { type: 'code'; lang: 'markdown' | 'json' | 'yaml'; label?: string; code: string }
   | { type: 'table'; headers: string[]; rows: string[][] }
-  | { type: 'bullets'; items: { lead?: string; text: string }[] }
+  | { type: 'bullets'; ordered?: boolean; items: { lead?: string; text: string }[] }
   | { type: 'workflow-diagram' }
   | { type: 'auditor-cta'; presetId: string; label: string; desc: string };
 
@@ -431,22 +639,9 @@ export interface DocSection {
   blocks: DocBlock[];
 }
 
-export interface DocPage {
-  slug: string;
-  group: 'Get Started' | 'Workflows' | 'Reference' | 'Architecture';
-  title: string;
-  shortTitle: string;
-  description: string;
-  readMinutes: number;
+export interface DocPage extends DocPageMeta {
   sections: DocSection[];
 }
-
-export const DOC_GROUPS: DocPage['group'][] = [
-  'Get Started',
-  'Workflows',
-  'Reference',
-  'Architecture',
-];
 
 export const DOC_PAGES: DocPage[] = ${JSON.stringify(compiledPages, null, 2)};
 
@@ -473,6 +668,8 @@ function sectionPlainText(sec: DocSection): string {
       switch (b.type) {
         case 'text':
           return b.body;
+        case 'subheading':
+          return b.text;
         case 'callout':
           return \`\${b.title} \${b.body}\`;
         case 'code':
@@ -507,10 +704,14 @@ export function docPageToMarkdown(page: DocPage): string {
     out.push(\`## \${sec.heading}\`, '');
     for (const b of sec.blocks) {
       if (b.type === 'text') out.push(b.body, '');
+      else if (b.type === 'subheading') out.push(\`### \${b.text}\`, '');
       else if (b.type === 'callout') out.push(\`> **\${b.title}:** \${b.body}\`, '');
       else if (b.type === 'code') out.push(${JSON.stringify('```')} + b.lang, b.code, ${JSON.stringify('```')}, '');
       else if (b.type === 'bullets') {
-        for (const it of b.items) out.push(\`- \${it.lead ? \`**\${it.lead}** \` : ''}\${it.text}\`);
+        b.items.forEach((it, idx) => {
+          const prefix = b.ordered ? \`\${idx + 1}. \` : '- ';
+          out.push(\`\${prefix}\${it.lead ? \`**\${it.lead}** \` : ''}\${it.text}\`);
+        });
         out.push('');
       } else if (b.type === 'table') {
         out.push(\`| \${b.headers.join(' | ')} |\`);
@@ -545,7 +746,7 @@ export function compileAllDocsMarkdown(): string {
 
   const targetPath = path.join(WEB_ROOT, 'src', 'features', 'docs', 'docsData.ts');
   fs.writeFileSync(targetPath, tsContent, 'utf-8');
-  console.log(`[sync-docs] ✓ Successfully synchronized ${compiledPages.length} documentation pages to ${targetPath}`);
+  console.log(`[sync-docs] ✓ Successfully synchronized ${compiledPages.length} pages to docsData.ts & docsManifest.ts`);
 }
 
 syncDocs().catch((err) => {

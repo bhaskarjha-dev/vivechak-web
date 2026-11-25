@@ -12,7 +12,7 @@ import type { ReferenceTab } from '@/features/docs/ReferenceDrawer';
 import { SetupSection } from '@/features/setup/SetupSection';
 import { ShiftShowcase } from '@/features/shift/ShiftShowcase';
 import { ToastHost } from '@/shared/components/ToastHost';
-import { findDocPage, hasDocPage } from '@/features/docs/docsData';
+import { findDocMeta, hasDocPage } from '@/features/docs/docsManifest';
 import { navigate, useRoute } from '@/shared/lib/router';
 import { soundEngine } from '@/shared/lib/sound';
 import { applyTheme, getInitialTheme, type ThemeMode } from '@/shared/lib/theme';
@@ -57,7 +57,7 @@ export const App: React.FC<AppProps> = ({
   const [bridgedPrompt, setBridgedPrompt] = useState<PromptBridgePayload | null>(null);
   const [selectedHostBridge, setSelectedHostBridge] = useState<{ hostId: string; nonce: number } | null>(null);
   const [playgroundTab, setPlaygroundTab] = useState<PlaygroundTab>('auditor');
-  const [auditorPresetId, setAuditorPresetId] = useState<string | null>(null);
+  const [auditorPresetLaunch, setAuditorPresetLaunch] = useState<{ id: string; nonce: number } | null>(null);
 
   const isHome = pathname === '/';
   const isDocsIndex = pathname === '/docs';
@@ -75,13 +75,13 @@ export const App: React.FC<AppProps> = ({
 
   // Route-accurate browser tab title, meta description & canonical URL
   useEffect(() => {
-    let title = 'Vivechak — Sift Truth Before Code';
+    let title = 'Vivechak — Prove Decisions Before Code';
     let desc =
       'Make AI coding agents prove hard architectural decisions with cited research (Grade A-E), red-team SHA-256 checks, and human sign-off — stored locally in plain Git Markdown.';
     let canonical = 'https://vivechak.bhaskarjha.dev/';
 
     if (isValidDocs) {
-      const p = findDocPage(docSlug);
+      const p = findDocMeta(docSlug);
       title = `${p.shortTitle} — Vivechak Docs`;
       desc = p.description;
       canonical = `https://vivechak.bhaskarjha.dev/docs/${p.slug}`;
@@ -128,7 +128,7 @@ export const App: React.FC<AppProps> = ({
 
   const launchAuditorPreset = useCallback((presetId: string) => {
     setPlaygroundTab('auditor');
-    setAuditorPresetId(presetId);
+    setAuditorPresetLaunch({ id: presetId, nonce: Date.now() });
     navigate('/playground');
   }, []);
 
@@ -158,7 +158,7 @@ export const App: React.FC<AppProps> = ({
   }, [toggleTheme]);
 
   return (
-    <MotionConfig reducedMotion="never">
+    <MotionConfig reducedMotion="user">
       <div className="app-shell">
         <a href="#main-content" className="sr-only">
           Skip to content
@@ -205,10 +205,10 @@ export const App: React.FC<AppProps> = ({
             )
           ) : isPlayground ? (
             SyncPlayground ? (
-              <SyncPlayground initialTab={playgroundTab} initialPresetId={auditorPresetId} />
+              <SyncPlayground initialTab={playgroundTab} initialPresetLaunch={auditorPresetLaunch} />
             ) : (
               <Suspense fallback={<div className="page-loading mono">Loading playground…</div>}>
-                <PlaygroundStudio initialTab={playgroundTab} initialPresetId={auditorPresetId} />
+                <PlaygroundStudio initialTab={playgroundTab} initialPresetLaunch={auditorPresetLaunch} />
               </Suspense>
             )
           ) : isNotFound ? (

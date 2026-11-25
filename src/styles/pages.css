@@ -298,6 +298,43 @@
   color: var(--saffron-bright);
 }
 
+.docs-h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.08rem;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  color: var(--ink-light);
+  margin: 1.55rem 0 0.65rem;
+}
+
+.doc-inline-code {
+  padding: 0.1rem 0.36rem;
+  font-size: 0.82em;
+  background: rgba(247, 244, 236, 0.075);
+  border: 1px solid rgba(247, 244, 236, 0.12);
+  border-radius: 4px;
+  color: var(--saffron-bright);
+}
+
+.doc-inline-link {
+  color: var(--saffron-bright);
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 163, 58, 0.42);
+  text-underline-offset: 3px;
+  transition: color 0.14s ease, text-decoration-color 0.14s ease;
+}
+
+.doc-inline-link:hover {
+  color: #ffe2a8;
+  text-decoration-color: var(--saffron-bright);
+}
+
+.doc-bullets.is-ordered {
+  list-style: decimal;
+  padding-left: 1.35rem;
+}
+
 .doc-p {
   margin: 0 0 1rem;
   font-size: 0.94rem;
@@ -802,10 +839,42 @@
   gap: 1rem;
 }
 
+.play-wep-form .play-preset-bar,
+.setup-left .play-preset-bar {
+  justify-content: flex-start;
+  gap: 0.42rem;
+}
+
 .play-opt-inputs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.65rem;
+}
+
+.play-opt-lbl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.play-opt-rm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-dark);
+  border-radius: 3px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.play-opt-rm:hover {
+  border-color: var(--fail);
+  color: #ff9c96;
 }
 
 .play-wep-rows {
@@ -845,7 +914,7 @@
 
 .play-score-trio {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   gap: 0.55rem;
 }
 
@@ -918,6 +987,7 @@
 
 [data-theme='light'] .docs-h1,
 [data-theme='light'] .docs-h2,
+[data-theme='light'] .docs-h3,
 [data-theme='light'] .play-h1,
 [data-theme='light'] .doc-callout strong,
 [data-theme='light'] .doc-bullet-lead,
@@ -927,6 +997,22 @@
 [data-theme='light'] .play-rule-row strong,
 [data-theme='light'] .play-diag-row p {
   color: #12203f;
+}
+
+[data-theme='light'] .doc-inline-code {
+  background: rgba(18, 32, 63, 0.07);
+  border-color: rgba(18, 32, 63, 0.14);
+  color: #8b4c02;
+}
+
+[data-theme='light'] .doc-inline-link {
+  color: #8b4c02;
+  text-decoration-color: rgba(139, 76, 2, 0.42);
+}
+
+[data-theme='light'] .doc-inline-link:hover {
+  color: #12203f;
+  text-decoration-color: #12203f;
 }
 
 [data-theme='light'] .docs-lead,
@@ -1261,5 +1347,87 @@
   .play-score-trio,
   .docs-pager {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .docs-h1 {
+    font-size: clamp(1.75rem, 6.8vw, 2.25rem);
+  }
+
+  .play-h1 {
+    font-size: clamp(1.85rem, 7vw, 2.35rem);
+  }
+
+  .play-head {
+    gap: 1.15rem;
+  }
+
+  .play-head .dark-seg-switch {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    border-radius: var(--r-md);
+  }
+
+  .play-head .dark-seg-btn {
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.22;
+    padding: 0.5rem 0.35rem;
+    font-size: 0.72rem;
+    border-radius: calc(var(--r-md) - 3px);
+  }
+
+  .play-head .dark-seg-bg {
+    border-radius: calc(var(--r-md) - 3px);
+  }
+
+  .play-head .seg-ico {
+    display: none;
+  }
+
+  .play-textarea {
+    min-height: 340px;
+  }
+
+  .play-preset-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .play-preset-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .play-preset-chips > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .play-rule-row {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .play-grade-pills {
+    margin-left: 0;
+  }
+
+  .doc-table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .doc-table {
+    min-width: 640px;
+  }
+
+  .doc-table .doc-inline-code {
+    white-space: nowrap;
   }
 }
