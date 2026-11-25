@@ -1,7 +1,7 @@
 /* ==========================================================================
-   VIVECHAK v4 DESIGN TOKENS — "Architectural Precision · Zero Slop"
-   Anchored to docs/BRAND.md:
-     Ink Indigo #12203F · Saffron Truth #F2A33A · Archival Paper #F4F0E6
+   VIVECHAK DESIGN TOKENS — Architectural Precision & Dual-Material Craft
+   Anchored strictly to docs/BRAND.md:
+     Ink Indigo #12203F · Saffron Truth #F2A33A · Warm Paper #F7F4EC
    ========================================================================== */
 
 @font-face {
@@ -29,12 +29,12 @@
   --saffron-deep: #b86c08;
   --saffron-ink: #8b4c02;
 
-  /* Calibrated Dark Surfaces */
+  /* Calibrated Obsidian Dark Surfaces (Quiet Architectural Elevation Steps) */
   --void: #050811;
   --obsidian: #070c18;
-  --chamber: #04070f;
-  --surface-dark: #0c1324;
-  --surface-code: #080e1c;
+  --chamber: #050914;
+  --surface-dark: #0b1222;
+  --surface-code: #070d1b;
 
   /* Warm Archival Paper Surfaces */
   --paper: #f4f0e6;
@@ -43,15 +43,16 @@
   --paper-ink: #12203f;
   --paper-soft: #43506b;
   --paper-muted: #68738a;
-  --paper-border: rgba(18, 32, 63, 0.14);
-  --paper-border-strong: rgba(18, 32, 63, 0.28);
+  --paper-border: rgba(18, 32, 63, 0.12);
+  --paper-border-strong: rgba(18, 32, 63, 0.24);
 
-  /* Dark Surface Text & Borders */
-  --ink-light: #f4f0e8;
-  --ink-soft: #a6b3cc;
-  --ink-muted: #6f7e9c;
-  --border-dark: rgba(244, 240, 232, 0.1);
-  --border-dark-strong: rgba(244, 240, 232, 0.2);
+  /* Dark Surface Text & Hairlines */
+  --ink-light: #f7f4ec;
+  --ink-soft: #a8b5ce;
+  --ink-muted: #70809e;
+  --ink-secondary: #c4d0e4;
+  --border-dark: rgba(247, 244, 236, 0.085);
+  --border-dark-strong: rgba(247, 244, 236, 0.165);
 
   /* Semantic Telemetry */
   --pass: #25b07f;

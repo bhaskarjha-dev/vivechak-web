@@ -105,14 +105,13 @@ html[data-theme='light'],
    -------------------------------------------------------------------------- */
 [data-theme='light'] .hero-stage {
   background:
-    radial-gradient(ellipse 56% 48% at 73% 44%, rgba(255, 255, 255, 0.72), transparent 68%),
-    radial-gradient(ellipse 34% 26% at 73% 68%, rgba(242, 163, 58, 0.09), transparent 64%),
+    radial-gradient(ellipse 54% 46% at 73% 44%, rgba(255, 255, 255, 0.72), transparent 68%),
+    radial-gradient(ellipse 30% 24% at 73% 66%, rgba(242, 163, 58, 0.08), transparent 64%),
     #f4f0e6;
 }
 
 [data-theme='light'] .hero-stage::after {
-  background-image: radial-gradient(rgba(18, 32, 63, 0.08) 0.75px, transparent 0.75px);
-  background-size: 28px 28px;
+  content: none;
 }
 
 [data-theme='light'] .vck-mark-body {
@@ -149,10 +148,33 @@ html[data-theme='light'],
   color: #43506b;
 }
 
+[data-theme='light'] .logo-replay-btn.is-visible {
+  color: #8b4c02;
+  border-color: rgba(184, 108, 8, 0.5);
+  background: rgba(250, 248, 242, 0.94);
+}
+
 [data-theme='light'] .logo-replay-btn:hover {
   background: #12203f;
   border-color: #12203f;
   color: #faf8f2;
+}
+
+[data-theme='light'] .spec-effort-seg {
+  background: rgba(18, 32, 63, 0.12);
+}
+
+[data-theme='light'] .spec-effort-seg.is-on {
+  background: #b86c08;
+}
+
+[data-theme='light'] .grade-meter-track {
+  background: rgba(18, 32, 63, 0.1);
+}
+
+[data-theme='light'] .flow-glyph path[stroke*="244,240,232"],
+[data-theme='light'] .flow-glyph line[stroke*="244,240,232"] {
+  stroke: rgba(18, 32, 63, 0.42);
 }
 
 [data-theme='light'] .hero-top-meta {
@@ -169,10 +191,26 @@ html[data-theme='light'],
 }
 
 [data-theme='light'] .hero-accent {
-  background: linear-gradient(135deg, #d27c0a 0%, #a85c04 60%, #7d4200 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #b86c08;
+}
+
+[data-theme='light'] .hero-quiet-proof {
+  color: #5b6882;
+}
+
+[data-theme='light'] .hqp-item::before {
+  background: #b86c08;
+}
+
+[data-theme='light'] .dock-more-btn {
+  color: #43506b;
+  border-color: rgba(18, 32, 63, 0.16);
+}
+
+[data-theme='light'] .dock-more-btn:hover,
+[data-theme='light'] .dock-more-btn.is-open {
+  color: #12203f;
+  border-color: #12203f;
 }
 
 [data-theme='light'] .hero-one-liner {
@@ -280,6 +318,13 @@ html[data-theme='light'],
   color: #ffffff;
 }
 
+[data-theme='light'] .dock-skill-note {
+  background: rgba(242, 163, 58, 0.1);
+  border-top-color: rgba(18, 32, 63, 0.12);
+  color: #43506b;
+}
+
+[data-theme='light'] .logo-hud-chip,
 [data-theme='light'] .logo-first-whisper {
   background: rgba(250, 248, 242, 0.92);
   border-color: rgba(18, 32, 63, 0.22);
@@ -328,11 +373,9 @@ html[data-theme='light'],
    ALTERNATING ARCHIVAL SURFACE BANDS (ALABASTER ↔ LINEN ↔ COTTON)
    -------------------------------------------------------------------------- */
 [data-theme='light'] .band-paper {
-  background-color: #f4f0e6;
-  background-image: radial-gradient(rgba(18, 32, 63, 0.045) 0.75px, transparent 0.75px);
-  background-size: 24px 24px;
+  background: #f4f0e6;
   color: #12203f;
-  border-top-color: rgba(18, 32, 63, 0.14);
+  border-top-color: rgba(18, 32, 63, 0.12);
 }
 
 [data-theme='light'] .eyebrow-light {
@@ -386,13 +429,16 @@ html[data-theme='light'],
   color: #34425e;
 }
 
-[data-theme='light'] .flow-ico,
+[data-theme='light'] .flow-ico {
+  color: #5b6882;
+}
+
 [data-theme='light'] .flow-step:hover .flow-ico,
-[data-theme='light'] .flow-step strong {
+[data-theme='light'] .flow-step-top strong {
   color: #12203f;
 }
 
-[data-theme='light'] .flow-step span {
+[data-theme='light'] .flow-desc {
   color: #43506b;
 }
 
@@ -589,11 +635,96 @@ html[data-theme='light'],
 /* Act 5 — Architecture Stage (Archival Paper Light: DAG, Git Files, MCP & Grades) */
 [data-theme='light'] .arch-card,
 [data-theme='light'] .ws-card,
-[data-theme='light'] .mcp-compact-wrap {
+[data-theme='light'] .mcp-compact-wrap,
+[data-theme='light'] .grades-deck {
   border-color: #12203f;
   background: #faf8f2;
   box-shadow: 0 22px 50px -24px rgba(18, 32, 63, 0.2);
 }
+
+[data-theme='light'] .grades-deck-head {
+  background: #ebe4d5;
+  color: #43506b;
+}
+
+[data-theme='light'] .grades-deck-cap {
+  color: #b83029;
+}
+
+[data-theme='light'] .dag-explain {
+  background: #f4f0e6;
+  border-bottom-color: rgba(18, 32, 63, 0.14);
+  color: #3a4864;
+}
+
+[data-theme='light'] .dag-explain code {
+  color: #8b4c02;
+}
+
+[data-theme='light'] .cal-step-kicker {
+  color: #8b4c02;
+}
+
+[data-theme='light'] .cal-step-kicker.is-step2 {
+  border-top-color: rgba(18, 32, 63, 0.14);
+}
+
+[data-theme='light'] .cal-step-sub,
+[data-theme='light'] .wep-explain {
+  color: #43506b;
+}
+
+[data-theme='light'] .wep-explain strong {
+  color: #12203f;
+}
+
+[data-theme='light'] .setup-path-btn {
+  background: #ffffff;
+  border-color: rgba(18, 32, 63, 0.22);
+  color: #43506b;
+}
+
+[data-theme='light'] .setup-path-btn:hover {
+  color: #12203f;
+  border-color: #12203f;
+}
+
+[data-theme='light'] .setup-path-btn.active {
+  color: #faf8f2;
+  border-color: transparent;
+}
+
+[data-theme='light'] .setup-info-card {
+  background: #f4f0e6;
+  border-color: rgba(18, 32, 63, 0.16);
+}
+
+[data-theme='light'] .setup-info-copy {
+  color: #3a4864;
+}
+
+[data-theme='light'] .setup-info-copy code {
+  color: #8b4c02;
+}
+
+[data-theme='light'] .setup-info-copy strong {
+  color: #12203f;
+}
+
+[data-theme='light'] .setup-exit-row.is-pass {
+  background: rgba(19, 118, 82, 0.08);
+  border-color: rgba(19, 118, 82, 0.32);
+}
+
+[data-theme='light'] .setup-exit-row.is-pass strong { color: #0e6645; }
+
+[data-theme='light'] .setup-exit-row.is-fail {
+  background: rgba(184, 48, 41, 0.08);
+  border-color: rgba(184, 48, 41, 0.32);
+}
+
+[data-theme='light'] .setup-exit-row.is-fail strong { color: #b83029; }
+[data-theme='light'] .setup-exit-row span { color: #3a4864; }
 
 [data-theme='light'] .arch-bar {
   background: #ebe4d5;
@@ -660,6 +791,45 @@ html[data-theme='light'],
 [data-theme='light'] .mcp-pill-col {
   background: #ebe4d5;
   border-right-color: #12203f;
+}
+
+[data-theme='light'] .mcp-triumvirate-bar {
+  background: #ebe4d5;
+  border-bottom-color: rgba(18, 32, 63, 0.22);
+}
+
+[data-theme='light'] .mcp-kind-btn {
+  color: #43506b;
+}
+
+[data-theme='light'] .mcp-kind-btn:hover {
+  color: #12203f;
+  background: rgba(18, 32, 63, 0.06);
+}
+
+[data-theme='light'] .mcp-kind-btn.active {
+  background: #12203f;
+  border-color: #12203f;
+  color: #faf8f2;
+}
+
+[data-theme='light'] .mcp-kind-badge {
+  background: rgba(18, 32, 63, 0.09);
+  color: #5b6882;
+}
+
+[data-theme='light'] .mcp-kind-btn.active .mcp-kind-badge {
+  background: rgba(242, 163, 58, 0.24);
+  color: #ffd37a;
+}
+
+[data-theme='light'] .mcp-spec-tag {
+  color: #5b6882;
+}
+
+[data-theme='light'] .mcp-prompt-details {
+  background: #0d1527;
+  color: #d6e0f2;
 }
 
 [data-theme='light'] .ws-root {

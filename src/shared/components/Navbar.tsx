@@ -59,17 +59,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     const computeActive = () => {
       rafId = 0;
-      if (window.scrollY < 180) {
+      if (window.scrollY < 160) {
         setActiveHomeSection('');
         return;
       }
-      const probeY = Math.min(220, Math.max(120, Math.round(window.innerHeight * 0.24)));
+      const probeY = Math.min(280, Math.max(140, Math.round(window.innerHeight * 0.28)));
       let current = '';
       for (const id of ids) {
         const el = document.getElementById(id);
         if (!el) continue;
         if (el.getBoundingClientRect().top <= probeY) {
           current = id;
+        }
+      }
+      // If a user clicked a hash link directly, keep it honored while its top sits near the viewport header
+      const hashId = window.location.hash.replace(/^#/, '');
+      if (hashId && (ids as readonly string[]).includes(hashId)) {
+        const target = document.getElementById(hashId);
+        if (target) {
+          const top = target.getBoundingClientRect().top;
+          if (top >= -24 && top <= Math.min(340, window.innerHeight * 0.36)) {
+            current = hashId;
+          }
         }
       }
       setActiveHomeSection(current);
@@ -80,12 +91,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
 
     computeActive();
+    const settleTimer = window.location.hash ? window.setTimeout(computeActive, 90) : 0;
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule, { passive: true });
     window.addEventListener('hashchange', schedule);
 
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
+      if (settleTimer) window.clearTimeout(settleTimer);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       window.removeEventListener('hashchange', schedule);

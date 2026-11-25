@@ -9,8 +9,14 @@
     display: none;
   }
 
+  .hero-sculpture-col {
+    width: min(100%, 360px);
+    justify-self: center;
+    margin: 0 auto;
+  }
+
   .logo-hero-stage {
-    width: min(100%, 310px);
+    width: min(100%, 340px);
     justify-self: center;
     margin: 0 auto;
   }
@@ -58,6 +64,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .proof-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shift-toolbar {
+    justify-content: center;
+  }
+
+  .shift-scenario-pills {
+    justify-content: center;
+  }
+
   .ws-sidebar,
   .mcp-pill-col {
     border-right: none;
@@ -75,6 +93,10 @@
   .grades-ribbon,
   .ladder-mini-grid {
     grid-template-columns: 1fr;
+  }
+
+  .spec-beam {
+    display: none;
   }
 
   .ladder-mini-card.is-stop {
@@ -137,6 +159,21 @@
     gap: 0.25rem;
   }
 
+  .hero-actions {
+    gap: 0.55rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .hero-actions .btn-saffron,
+  .hero-actions .btn-glass {
+    padding: 0.68rem 0.98rem;
+    font-size: 0.84rem;
+  }
+
+  .logo-hero-stage {
+    width: min(100%, 300px);
+  }
+
   .dock-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -169,4 +206,49 @@
   }
 
   .palette-hint { display: none; }
+
+  .shift-toggle {
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  .shift-tab-btn {
+    padding: 0.38rem 0.52rem;
+    font-size: 0.7rem;
+  }
+
+  .dark-seg-switch,
+  .paper-seg-switch {
+    max-width: 100%;
+  }
+
+  .dark-seg-btn,
+  .paper-seg-btn {
+    gap: 0.3rem;
+    padding: 0.42rem 0.64rem;
+    font-size: 0.72rem;
+  }
+
+  .setup-path-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.4rem;
+  }
+
+  .setup-path-btn {
+    padding: 0.5rem 0.45rem;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
+  .host-pill-btn {
+    padding: 0.38rem 0.68rem;
+    font-size: 0.74rem;
+  }
+
+  .spotlight-row input,
+  .builder-field input {
+    font-size: 1rem;
+  }
 }

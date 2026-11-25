@@ -106,44 +106,42 @@ div[id] {
   padding: 0 clamp(1.25rem, 3.4vw, 2.5rem);
 }
 
-/* Alternating Architectural Surface Bands — 100% Cohesive Dark Elevations in Dark Mode */
+/* Alternating Architectural Surface Bands — Quiet Gallery-Grade Elevation Steps (Zero Noisy Grids) */
 .band-paper {
   position: relative;
-  background-color: #090f1e;
-  background-image:
-    radial-gradient(ellipse 68% 36% at 50% 0%, rgba(242, 163, 58, 0.055), transparent 64%),
-    radial-gradient(rgba(244, 240, 232, 0.042) 0.8px, transparent 0.8px);
-  background-size: 100% 100%, 26px 26px;
+  background:
+    radial-gradient(ellipse 68% 32% at 50% 0%, rgba(242, 163, 58, 0.038), transparent 64%),
+    #080e1d;
   color: var(--ink-light);
-  padding: clamp(4.75rem, 8vw, 7rem) 0;
+  padding: clamp(4.25rem, 7vw, 6.25rem) 0;
   border-top: 1px solid var(--border-dark);
 }
 
 .band-obsidian {
   position: relative;
   background:
-    radial-gradient(ellipse 65% 40% at 50% 0%, rgba(242, 163, 58, 0.045), transparent 65%),
+    radial-gradient(ellipse 64% 34% at 50% 0%, rgba(242, 163, 58, 0.035), transparent 64%),
     var(--obsidian);
   color: var(--ink-light);
-  padding: clamp(4.75rem, 8vw, 7rem) 0;
+  padding: clamp(4.25rem, 7vw, 6.25rem) 0;
   border-top: 1px solid var(--border-dark);
 }
 
 .band-chamber {
   position: relative;
   background:
-    radial-gradient(ellipse 60% 42% at 85% 0%, rgba(242, 163, 58, 0.06), transparent 65%),
+    radial-gradient(ellipse 58% 36% at 84% 0%, rgba(242, 163, 58, 0.045), transparent 64%),
     var(--chamber);
   color: var(--ink-light);
-  padding: clamp(4.75rem, 8vw, 7rem) 0;
+  padding: clamp(4.25rem, 7vw, 6.25rem) 0;
   border-top: 1px solid var(--border-dark);
 }
 
-/* Shared Section Headers — Ultra-Decluttered */
+/* Shared Section Headers — Quiet Editorial Authority */
 .sec-intro-center {
   text-align: center;
-  max-width: 780px;
-  margin: 0 auto 2.75rem;
+  max-width: 760px;
+  margin: 0 auto 2.35rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -155,7 +153,7 @@ div[id] {
   justify-content: space-between;
   align-items: flex-end;
   gap: 1.5rem 2.5rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2.25rem;
 }
 
 .eyebrow-light,
