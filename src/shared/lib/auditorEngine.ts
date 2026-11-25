@@ -92,36 +92,51 @@ export function auditArtifact(markdown: string): AuditReport {
     });
   }
 
-  // Scan evidence tags & URLs line by line
+  // Scan evidence tags & URLs line by line (and per table cell for multi-option WEP tables)
   const gradeCounts: Record<'A' | 'B' | 'C' | 'D' | 'E', number> = { A: 0, B: 0, C: 0, D: 0, E: 0 };
   let groundedABUrlCount = 0;
   let verifiedFetchedHumanCount = 0;
   let recalledHighGradeCount = 0;
+  let abTagsTotal = 0;
+  let abTagsWithUrl = 0;
 
   const lines = body.split(/\r?\n/);
-  const tagRegex = /\[(?:Grade\s+)?([A-E])(?:\s*[·:|][^\]]*)?\]|\(Grade\s+([A-E])[^)]*\)/gi;
+  const tagRegex = /\[(?:(?:E-|Grade\s+)?)([A-E])(?:\s*[·:|][^\]]*)?\]|\(Grade\s+([A-E])[^)]*\)/gi;
 
   for (const line of lines) {
     const matches = Array.from(line.matchAll(tagRegex));
+    const isTableRow = line.trim().startsWith('|');
     if (matches.length === 0) continue;
 
-    const hasUrl = /https?:\/\/[^\s)>]+/i.test(line);
-    const hasFetchedOrHuman = /\b(fetched|human|human-provided)\b/i.test(line);
-    const hasRecalled = /\b(recalled|parametric)\b/i.test(line);
+    const lineHasUrl = /https?:\/\/[^\s)>]+/i.test(line);
+    const tableHasFetchedOrHuman = isTableRow && /\|\s*(fetched|human|human-provided)\s*\|/i.test(line);
 
     let lineCountedAB = false;
     for (const m of matches) {
+      const rawTag = m[0];
+      const matchEnd = (m.index ?? 0) + rawTag.length;
+      const tailAfterTag = line.slice(matchEnd, matchEnd + 160);
+      const tagDirectlyLinked = /^\s*\(\s*https?:\/\/[^\s)]+\s*\)/i.test(tailAfterTag);
+      const cellHasUrl = isTableRow ? tagDirectlyLinked || /https?:\/\//i.test(tailAfterTag.split('|')[0] || '') : lineHasUrl;
+
       const g = (m[1] || m[2] || '').toUpperCase() as 'A' | 'B' | 'C' | 'D' | 'E';
+      const tagHasRecalled = /\b(recalled|parametric)\b/i.test(rawTag);
+      const tagHasFetchedOrHuman = /\b(fetched|human|human-provided)\b/i.test(rawTag) || tableHasFetchedOrHuman;
+
       if (g in gradeCounts) gradeCounts[g]++;
-      if ((g === 'A' || g === 'B' || g === 'C') && hasRecalled) {
+      if ((g === 'A' || g === 'B' || g === 'C') && tagHasRecalled) {
         recalledHighGradeCount++;
       }
-      if ((g === 'A' || g === 'B') && !lineCountedAB) {
-        lineCountedAB = true;
-        if (hasUrl) {
-          groundedABUrlCount++;
-          if (hasFetchedOrHuman && !hasRecalled) {
-            verifiedFetchedHumanCount++;
+      if (g === 'A' || g === 'B') {
+        abTagsTotal++;
+        if (cellHasUrl) abTagsWithUrl++;
+        if (!lineCountedAB) {
+          lineCountedAB = true;
+          if (lineHasUrl) {
+            groundedABUrlCount++;
+            if (tagHasFetchedOrHuman && !tagHasRecalled) {
+              verifiedFetchedHumanCount++;
+            }
           }
         }
       }
@@ -159,12 +174,12 @@ export function auditArtifact(markdown: string): AuditReport {
     });
   }
 
-  if ((gradeCounts.A + gradeCounts.B) > groundedABUrlCount) {
+  if (abTagsTotal > abTagsWithUrl) {
     diagnostics.push({
       code: 'V-OWD-VAGUE-PROVENANCE',
       severity: 'warning',
-      message: 'One or more Grade A/B claims lack an explicit https:// URL anchor on the claim line.',
-      fix: 'Include the canonical primary documentation or benchmark URL directly alongside the grade tag.',
+      message: `${abTagsTotal - abTagsWithUrl} Grade A/B claim(s) lack an explicit https:// URL anchor.`,
+      fix: 'Attach a canonical primary documentation or benchmark URL directly alongside each Grade A/B tag.',
     });
   }
 

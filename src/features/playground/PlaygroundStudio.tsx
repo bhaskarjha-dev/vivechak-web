@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -20,275 +20,71 @@ import {
   Upload,
   Wand2,
 } from 'lucide-react';
-import { buildCustomPrompt } from '@/shared/data/vivechakData';
-import { AUDITOR_PRESETS, auditArtifact } from '@/shared/lib/auditorEngine';
+import { AUDITOR_PRESETS } from '@/shared/lib/auditorEngine';
 import { copyText } from '@/shared/lib/clipboard';
 import { downloadTextFile } from '@/shared/lib/download';
 import { renderHighlightedCode } from '@/shared/lib/highlight';
 import { navigate } from '@/shared/lib/router';
-import { sha256Hex } from '@/shared/lib/sha256';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
+import {
+  DEFAULT_WEP_OPTIONS,
+  DEFAULT_WEP_ROWS,
+  WEP_STARTERS,
+  encodeSharePayload,
+  usePlaygroundState,
+  type PlaygroundTab,
+  type PresetLaunchPayload,
+} from './usePlaygroundState';
 
-export type PlaygroundTab = 'auditor' | 'wep' | 'prompt';
+export type { PlaygroundTab, PresetLaunchPayload };
 
 interface PlaygroundStudioProps {
   initialTab?: PlaygroundTab;
-  initialPresetId?: string | null;
-}
-
-interface CustomWepRow {
-  id: string;
-  name: string;
-  weight: number;
-  scores: [number, number, number];
-}
-
-const WEP_STARTERS: {
-  id: string;
-  label: string;
-  title: string;
-  options: [string, string, string];
-  rows: CustomWepRow[];
-}[] = [
-  {
-    id: 'rag',
-    label: 'RAG Vector DB (±20% Flip)',
-    title: 'Hybrid AI RAG Retrieval Engine (10M Vectors)',
-    options: ['Qdrant', 'Postgres + pgvector', 'Pinecone Serverless'],
-    rows: [
-      { id: 'r1', name: '10M-Vector Recall & p99 Latency', weight: 34, scores: [5, 3, 5] },
-      { id: 'r2', name: 'Unified SQL Joins & Small-Team Ops', weight: 32, scores: [3, 5, 4] },
-      { id: 'r3', name: 'Predictable Monthly Infra Cost', weight: 20, scores: [5, 4, 2] },
-      { id: 'r4', name: 'Portability & Zero Lock-In', weight: 14, scores: [5, 5, 2] },
-    ],
-  },
-  {
-    id: 'logger',
-    label: 'Node.js Logger (Robust)',
-    title: 'High-Throughput Node.js Microservice Logger',
-    options: ['Pino', 'Winston', 'Bunyan'],
-    rows: [
-      { id: 'l1', name: 'Event-Loop Latency Overhead', weight: 35, scores: [5, 2, 3] },
-      { id: 'l2', name: 'Memory & GC Allocation Pressure', weight: 25, scores: [5, 3, 4] },
-      { id: 'l3', name: 'Transport & SIEM Ecosystem', weight: 22, scores: [4, 5, 2] },
-      { id: 'l4', name: 'Maintenance Velocity & CVEs', weight: 18, scores: [5, 4, 1] },
-    ],
-  },
-  {
-    id: 'analytics',
-    label: 'Event Analytics Storage',
-    title: 'Analytical Event Storage Engine (25M/day)',
-    options: ['ClickHouse Cloud', 'Postgres + Timescale', 'DynamoDB + Athena'],
-    rows: [
-      { id: 'c1', name: '30-Day Analytical p95 Latency', weight: 35, scores: [5, 3, 2] },
-      { id: 'c2', name: 'Operational Burden (Small Team)', weight: 30, scores: [3, 5, 4] },
-      { id: 'c3', name: 'Storage Cost & Compression', weight: 20, scores: [5, 3, 4] },
-      { id: 'c4', name: 'Exit Path & Portability', weight: 15, scores: [4, 5, 2] },
-    ],
-  },
-];
-
-const DEFAULT_WEP_OPTIONS: [string, string, string] = WEP_STARTERS[0].options;
-const DEFAULT_WEP_ROWS: CustomWepRow[] = WEP_STARTERS[0].rows;
-
-function encodeSharePayload(obj: unknown): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(obj));
-  let bin = '';
-  bytes.forEach((b) => (bin += String.fromCharCode(b)));
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function decodeSharePayload<T>(raw: string): T | null {
-  try {
-    const pad = raw.length % 4 === 0 ? '' : '='.repeat(4 - (raw.length % 4));
-    const bin = atob(raw.replace(/-/g, '+').replace(/_/g, '/') + pad);
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as T;
-  } catch {
-    return null;
-  }
+  initialPresetLaunch?: PresetLaunchPayload | null;
 }
 
 export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
   initialTab = 'auditor',
-  initialPresetId,
+  initialPresetLaunch,
 }) => {
-  const [tab, setTab] = useState<PlaygroundTab>(initialTab);
-  const [didSwitchTab, setDidSwitchTab] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const dragDepthRef = useRef(0);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
-
-  // Tab 1: Live ADR / Session Auditor
-  const [editorText, setEditorText] = useState<string>(AUDITOR_PRESETS[0].content);
-  const [decisionHash, setDecisionHash] = useState<string>('calculating…');
-
-  useEffect(() => {
-    if (!initialPresetId) return;
-    const found = AUDITOR_PRESETS.find((p) => p.id === initialPresetId);
-    if (found) {
-      setEditorText(found.content);
-      setTab('auditor');
-    }
-  }, [initialPresetId]);
-
-  const audit = useMemo(() => auditArtifact(editorText), [editorText]);
-
-  useEffect(() => {
-    let alive = true;
-    void sha256Hex(audit.outcomeText).then((h) => {
-      if (alive) setDecisionHash(h);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [audit.outcomeText]);
-
-  const insertMissingSkeleton = () => {
-    soundEngine.playSieveDrop();
-    let updated = editorText.trim();
-    if (!/##\s+Discovered\s+Concerns/i.test(updated)) {
-      updated +=
-        '\n\n## Discovered Concerns\nConcrete operational failure modes, burst scaling cliffs, and migration edge cases observed during empirical verification.';
-    }
-    if (!/##\s+Challenge\s+Findings/i.test(updated) && audit.artifactKind === 'decision') {
-      updated +=
-        '\n\n## Challenge Findings\nStress-tested in D-001-R1: simulated peak-load failure path and validated deterministic fallback & batching mitigations.';
-    }
-    setEditorText(updated);
-    showToast('Appended missing Track B sections');
-  };
-
-  // Tab 2: Editable WEP ±20% Matrix Builder
-  const [wepTitle, setWepTitle] = useState(WEP_STARTERS[0].title);
-  const [wepOptions, setWepOptions] = useState<[string, string, string]>(DEFAULT_WEP_OPTIONS);
-  const [wepRows, setWepRows] = useState<CustomWepRow[]>(DEFAULT_WEP_ROWS);
-
-  const wepResult = useMemo(() => {
-    const sumW = Math.max(1, wepRows.reduce((a, r) => a + r.weight, 0));
-    const norm = wepRows.map((r) => ({ ...r, w: r.weight / sumW }));
-    const sortedByW = [...norm].sort((a, b) => b.w - a.w);
-    const top1 = sortedByW[0]?.id;
-    const top2 = sortedByW[1]?.id;
-
-    const evalTotals = (deltaPct: number) => {
-      const weights: Record<string, number> = {};
-      let wSum = 0;
-      for (const r of norm) {
-        let v = r.w;
-        if (r.id === top1) v = Math.max(0.05, v * (1 + deltaPct / 100));
-        if (r.id === top2) v = Math.max(0.05, v * (1 - deltaPct / 100));
-        weights[r.id] = v;
-        wSum += v;
-      }
-      Object.keys(weights).forEach((k) => (weights[k] /= wSum));
-
-      const scores = [0, 1, 2].map((optIdx) => ({
-        optIdx,
-        name: wepOptions[optIdx] || `Option ${optIdx + 1}`,
-        score: norm.reduce((acc, r) => acc + r.scores[optIdx] * weights[r.id], 0),
-      }));
-      scores.sort((a, b) => b.score - a.score);
-      return { scores, winner: scores[0].optIdx };
-    };
-
-    const base = evalTotals(0);
-    const plus = evalTotals(20);
-    const minus = evalTotals(-20);
-    const sensitive = plus.winner !== base.winner || minus.winner !== base.winner;
-
-    const mdLines = [
-      '---',
-      'id: C-001',
-      'type: comparison',
-      `title: "${wepTitle}"`,
-      'status: complete',
-      'door_type: two-way',
-      '---',
-      '',
-      `# C-001: ${wepTitle} (WEP Matrix)`,
-      '',
-      `| Criterion | Weight | ${wepOptions[0]} | ${wepOptions[1]} | ${wepOptions[2]} |`,
-      '|---|---:|---:|---:|---:|',
-      ...norm.map(
-        (r) =>
-          `| ${r.name} | ${r.w.toFixed(2)} | ${r.scores[0]} [B · fetched] | ${r.scores[1]} [B · fetched] | ${r.scores[2]} [B · fetched] |`
-      ),
-      '',
-      '## Weighted Totals & ±20% Top-2 Sensitivity',
-      ...base.scores.map((s, idx) => `${idx + 1}. **${s.name}**: ${s.score.toFixed(2)} / 5.00`),
-      '',
-      `**Verdict:** ${sensitive ? 'WEIGHT-SENSITIVE — winner flips under ±20% weight shift; verify priorities with stakeholders.' : `ROBUST WINNER — ${base.scores[0].name} leads across all ±20% top-2 weight perturbations.`}`,
-    ];
-
-    return { norm, base, sensitive, markdown: mdLines.join('\n') };
-  }, [wepOptions, wepRows, wepTitle]);
-
-  // Tab 3: Full-Canvas Zero-Install Prompt Studio
-  const [pScope, setPScope] = useState<'comparison' | 'decision' | 'project'>('decision');
-  const [pDoor, setPDoor] = useState<'one-way' | 'two-way'>('one-way');
-  const [pQuestion, setPQuestion] = useState(
-    'Should we adopt Kafka or NATS JetStream for cross-region event streaming?'
-  );
-  const [pOptions, setPOptions] = useState('Apache Kafka (Confluent), NATS JetStream, Redpanda');
-  const [pContext, setPContext] = useState(
-    '80k msg/s burst; 5-person platform team; strict replay window of 7 days'
-  );
-
-  const generatedPrompt = useMemo(
-    () =>
-      buildCustomPrompt({
-        scope: pScope,
-        question: pQuestion,
-        options: pOptions,
-        context: pContext,
-        doorType: pDoor,
-      }),
-    [pScope, pQuestion, pOptions, pContext, pDoor]
-  );
-
-  // Restore stateless shareable URL hash (#wep=... or #prompt=...) on load
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const h = window.location.hash;
-    if (h.startsWith('#wep=')) {
-      const data = decodeSharePayload<{
-        title?: string;
-        options?: [string, string, string];
-        rows?: CustomWepRow[];
-      }>(h.slice(5));
-      if (data?.title && Array.isArray(data.options) && data.options.length === 3 && Array.isArray(data.rows)) {
-        setWepTitle(data.title);
-        setWepOptions(data.options);
-        setWepRows(data.rows);
-        setTab('wep');
-        showToast('Loaded shared WEP matrix');
-      }
-    } else if (h.startsWith('#prompt=')) {
-      const data = decodeSharePayload<{
-        scope?: 'comparison' | 'decision' | 'project';
-        door?: 'one-way' | 'two-way';
-        question?: string;
-        options?: string;
-        context?: string;
-      }>(h.slice(8));
-      if (data?.question) {
-        if (data.scope) setPScope(data.scope);
-        if (data.door) setPDoor(data.door);
-        setPQuestion(data.question);
-        if (data.options !== undefined) setPOptions(data.options);
-        if (data.context !== undefined) setPContext(data.context);
-        setTab('prompt');
-        showToast('Loaded shared prompt');
-      }
-    }
-  }, []);
+  const {
+    tab,
+    setTab,
+    didSwitchTab,
+    setDidSwitchTab,
+    copiedId,
+    setCopiedId,
+    dragActive,
+    setDragActive,
+    dragDepthRef,
+    fileInputRef,
+    editorText,
+    setEditorText,
+    decisionHash,
+    audit,
+    insertMissingSkeleton,
+    wepTitle,
+    setWepTitle,
+    wepOptions,
+    setWepOptions,
+    addWepOption,
+    removeWepOption,
+    wepRows,
+    setWepRows,
+    wepResult,
+    pScope,
+    setPScope,
+    pDoor,
+    setPDoor,
+    pQuestion,
+    setPQuestion,
+    pOptions,
+    setPOptions,
+    pContext,
+    setPContext,
+    generatedPrompt,
+  } = usePlaygroundState({ initialTab, initialPresetLaunch });
 
   const loadLocalMarkdownFile = (file: File | null | undefined) => {
     if (!file) return;
@@ -351,6 +147,9 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
     showToast(`Copied ${label}`);
     window.setTimeout(() => setCopiedId(null), 1600);
   };
+
+  const auditorDownloadName = `${(audit.frontmatter.id || 'D-001').replace(/[^A-Za-z0-9_-]/g, '')}-${audit.artifactKind}.md`;
+  const needsSkeletonFix = audit.artifactKind !== 'comparison' && (audit.verdict !== 'PASS' || audit.diagnostics.length > 0);
 
   return (
     <div className="play-shell">
@@ -462,20 +261,22 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   <Upload size={12} />
                   <span>Open .md</span>
                 </button>
-                <button
-                  type="button"
-                  className="setup-dl-btn mono"
-                  onClick={insertMissingSkeleton}
-                >
-                  <Wand2 size={12} />
-                  <span>Add Track B Stubs</span>
-                </button>
+                {needsSkeletonFix && (
+                  <button
+                    type="button"
+                    className="setup-dl-btn mono"
+                    onClick={insertMissingSkeleton}
+                  >
+                    <Wand2 size={12} />
+                    <span>Fix Missing Sections</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="setup-dl-btn mono"
                   onClick={() => {
-                    downloadTextFile('D-001-decision.md', editorText);
-                    showToast('Downloaded D-001-decision.md');
+                    downloadTextFile(auditorDownloadName, editorText);
+                    showToast(`Downloaded ${auditorDownloadName}`);
                   }}
                 >
                   <Download size={12} />
@@ -617,8 +418,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       onClick={() => {
                         soundEngine.playTick(740);
                         setWepTitle(st.title);
-                        setWepOptions([...st.options] as [string, string, string]);
-                        setWepRows(st.rows.map((r) => ({ ...r, scores: [...r.scores] as [number, number, number] })));
+                        setWepOptions([...st.options]);
+                        setWepRows(st.rows.map((r) => ({ ...r, scores: [...r.scores] })));
                       }}
                     >
                       {st.label}
@@ -635,15 +436,48 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   />
                 </label>
 
+                <div className="play-wep-rows-head">
+                  <div className="setup-label mono">OPTIONS ({wepOptions.length} OF 2–5)</div>
+                  {wepOptions.length < 5 && (
+                    <button
+                      type="button"
+                      id="btn-wep-add-option"
+                      className="setup-dl-btn mono"
+                      onClick={() => {
+                        soundEngine.playTick(800);
+                        addWepOption();
+                      }}
+                    >
+                      <Plus size={11} />
+                      <span>Add Option</span>
+                    </button>
+                  )}
+                </div>
+
                 <div className="play-opt-inputs">
                   {wepOptions.map((opt, idx) => (
                     <label key={idx} className="builder-field">
-                      <span className="setup-label mono">OPTION 0{idx + 1}</span>
+                      <span className="setup-label mono play-opt-lbl-row">
+                        <span>OPTION 0{idx + 1}</span>
+                        {wepOptions.length > 2 && (
+                          <button
+                            type="button"
+                            className="play-opt-rm"
+                            aria-label={`Remove option ${opt || idx + 1}`}
+                            onClick={() => {
+                              soundEngine.playTick(540);
+                              removeWepOption(idx);
+                            }}
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        )}
+                      </span>
                       <input
                         type="text"
                         value={opt}
                         onChange={(e) => {
-                          const next = [...wepOptions] as [string, string, string];
+                          const next = [...wepOptions];
                           next[idx] = e.target.value;
                           setWepOptions(next);
                         }}
@@ -667,7 +501,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                               id: `c-${Date.now()}`,
                               name: `Custom Criterion ${prev.length + 1}`,
                               weight: 15,
-                              scores: [3, 3, 3],
+                              scores: wepOptions.map(() => 3),
                             },
                           ]);
                         }}
@@ -681,8 +515,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                         onClick={() => {
                           soundEngine.playTick(620);
                           setWepTitle(WEP_STARTERS[0].title);
-                          setWepOptions([...DEFAULT_WEP_OPTIONS] as [string, string, string]);
-                          setWepRows(DEFAULT_WEP_ROWS.map((r) => ({ ...r, scores: [...r.scores] as [number, number, number] })));
+                          setWepOptions([...DEFAULT_WEP_OPTIONS]);
+                          setWepRows(DEFAULT_WEP_ROWS.map((r) => ({ ...r, scores: [...r.scores] })));
                         }}
                         title="Reset WEP matrix to default RAG Vector DB preset"
                       >
@@ -747,19 +581,21 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                         </div>
                       </div>
                       <div className="play-score-trio">
-                        {[0, 1, 2].map((oIdx) => (
+                        {wepOptions.map((optName, oIdx) => (
                           <div key={oIdx} className="play-score-cell mono">
-                            <span className="play-sc-lbl">{wepOptions[oIdx].slice(0, 12)}</span>
+                            <span className="play-sc-lbl" title={optName || `Option ${oIdx + 1}`}>
+                              {optName || `Option ${oIdx + 1}`}
+                            </span>
                             <div className="play-sc-dots">
                               {[1, 2, 3, 4, 5].map((val) => (
                                 <button
                                   key={val}
                                   type="button"
-                                  className={`play-sc-btn ${row.scores[oIdx] === val ? 'active' : ''}`}
+                                  className={`play-sc-btn ${(row.scores[oIdx] ?? 3) === val ? 'active' : ''}`}
                                   onClick={() => {
                                     soundEngine.playTick(560 + val * 70);
                                     const next = [...wepRows];
-                                    const sc = [...row.scores] as [number, number, number];
+                                    const sc = [...row.scores];
                                     sc[oIdx] = val;
                                     next[rIdx] = { ...row, scores: sc };
                                     setWepRows(next);
@@ -810,7 +646,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
 
                 <div className="setup-right">
                   <div className="setup-code-head mono">
-                    <span>EXPORTABLE · research/C-001-comparison.md</span>
+                    <span title="research/C-001-comparison.md">research/C-001-comparison.md</span>
                     <div className="setup-code-actions">
                       <button
                         type="button"
@@ -872,6 +708,54 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
             transition={{ duration: 0.18 }}
           >
             <div className="setup-left">
+              <div className="play-preset-bar" style={{ marginBottom: '0.2rem' }}>
+                <span className="mono wep-lbl">TRY EXAMPLE:</span>
+                {(
+                  [
+                    {
+                      label: 'Compare Libraries',
+                      scope: 'comparison' as const,
+                      door: 'two-way' as const,
+                      q: 'Compare Pino vs Winston for a 15k req/sec Node.js API gateway',
+                      opts: 'Pino, Winston',
+                      ctx: 'Node 22; strict p99 latency budget (<2ms logging overhead); Datadog ingestion',
+                    },
+                    {
+                      label: 'Event Bus Migration',
+                      scope: 'decision' as const,
+                      door: 'one-way' as const,
+                      q: 'Should we adopt Kafka or NATS JetStream for cross-region event streaming?',
+                      opts: 'Apache Kafka (Confluent), NATS JetStream, Redpanda',
+                      ctx: '80k msg/s burst; 5-person platform team; strict replay window of 7 days',
+                    },
+                    {
+                      label: 'Greenfield Platform',
+                      scope: 'project' as const,
+                      door: 'one-way' as const,
+                      q: 'Architect a multi-tenant B2B observability platform with EU GDPR compliance',
+                      opts: '',
+                      ctx: '6-person team; 20M events/day initial scale; strict tenant isolation & audit trail',
+                    },
+                  ] as const
+                ).map((ex) => (
+                  <button
+                    key={ex.label}
+                    type="button"
+                    className={`spot-chip mono ${pQuestion === ex.q ? 'active' : ''}`}
+                    onClick={() => {
+                      soundEngine.playTick(740);
+                      setPScope(ex.scope);
+                      setPDoor(ex.door);
+                      setPQuestion(ex.q);
+                      setPOptions(ex.opts);
+                      setPContext(ex.ctx);
+                    }}
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="builder-scope-row">
                 <span className="setup-label mono">RESEARCH SCOPE</span>
                 <div className="builder-scope-pills">
