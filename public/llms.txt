@@ -1,4 +1,4 @@
-# Vivechak (vck) — Sift Truth Before Code
+# Vivechak (vck) — Prove Decisions Before Code
 
 > Local-first Go MCP server and CLI for evidence-graded technical research, adversarial red-teaming, and mechanical Phase 0 exit gates in plain Git Markdown.
 
@@ -18,25 +18,28 @@ Vivechak prevents AI coding agents from making irreversible architectural decisi
 4. **Out of Scope:** Routine bug fixes, functions, refactors, syntax questions — skip Vivechak and write code directly.
 
 ## Quick Install
-- **macOS / Linux:** `curl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh`
+- **macOS / Linux:** `curl -fsSL https://vivechak.bhaskarjha.dev/install.sh | bash`
+- **Windows PowerShell:** `irm https://vivechak.bhaskarjha.dev/install.ps1 | iex`
 - **Homebrew:** `brew install --cask bhaskarjha-dev/tap/vivechak`
-- **npx:** `npx -y vivechak serve`
-- **uvx:** `uvx vck serve`
-- **Windows:** `irm https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.ps1 | iex`
-- **Go:** `go install github.com/bhaskarjha-dev/vivechak/cmd/vivechak@latest`
+- **WinGet:** `winget install bhaskarjha-dev.Vivechak`
+- **npx (Zero-Install):** `npx -y vivechak serve`
+- **uvx (Zero-Install):** `uvx vck serve`
+- **Agent Skill:** `npx skills add bhaskarjha-dev/vivechak`
+- **Go 1.26+:** `go install github.com/bhaskarjha-dev/vivechak/cmd/vivechak@latest`
 
 ## Verified MCP Host Setup (10 Presets)
-Run `vck setup <host>` (`cursor`, `claude-code`, `vscode`, `claude`, `agy`, `zed`, `windsurf`, `opencode`, `roo`, `goose`) with `--dry-run` preview and timestamped backups.
+Run `vck setup <host>` (`cursor`, `claude-code`, `vscode`, `claude`, `agy`, `zed`, `windsurf`, `opencode`, `roo`, `goose`) with `--dry-run` preview and timestamped `.vivechak-bak-<timestamp>` backups.
 
-## MCP Protocol Surface
+## MCP Protocol Surface (9,063 Bytes Always-Loaded Context)
 - **9 Tools:** `vivechak_start`, `vivechak_save`, `vivechak_record_decision`, `vivechak_next`, `vivechak_status`, `vivechak_review`, `vivechak_amend`, `vivechak_replan`, `vivechak_gate`
 - **4 Prompts:** `/compare`, `/decision`, `/project`, `/gate`
 - **8 Read-Only Resources:** `vivechak://templates/{decisions,comparison,fad,conflict-resolution,gate,session}`, `vivechak://methodology/{grades,principles}`
 
-## Security & Confinement
+## Limits, Security & Confinement
 - Go 1.26 `os.Root` path confinement strictly to `research/`.
 - 7-step fail-closed workspace resolution ladder (refuses `/`, `$HOME`, and OS program directories).
 - `E-HUMAN-ONLY-FIELD` blocks agents from self-attesting One-Way Door ADRs; interactive `/dev/tty` `vck signoff` binds SHA-256 `reviewed_hash` and `decision_hash`.
+- Vivechak never fetches external URLs or calls LLMs: evidence grades and `fetched` labels are structured reports from the executing agent.
 - CI merge gate: `vck doctor && vck gate --track all` exits `1` on Track A/B failures.
 
 ## Canonical On-Site Documentation & Interactive Tools
@@ -49,7 +52,7 @@ Run `vck setup <host>` (`cursor`, `claude-code`, `vscode`, `claude`, `agy`, `zed
 - Zero-Install Manual Mode: https://vivechak.bhaskarjha.dev/docs/manual-workflow
 - Hybrid & Parallel Subagents: https://vivechak.bhaskarjha.dev/docs/hybrid-parallel
 - Real Adoption Walkthroughs: https://vivechak.bhaskarjha.dev/docs/examples
-- CLI Commands & CI Gates: https://vivechak.bhaskarjha.dev/docs/cli
+- CLI Commands & Troubleshooting: https://vivechak.bhaskarjha.dev/docs/cli
 - MCP Tools, Prompts & Resources: https://vivechak.bhaskarjha.dev/docs/mcp-reference
 - Phase 0 Exit Gate (G1–G12): https://vivechak.bhaskarjha.dev/docs/gate-rules
 - Diagnostic & Quality Coach Codes: https://vivechak.bhaskarjha.dev/docs/codes

@@ -24,6 +24,7 @@ for (const meta of routes) {
   const canonicalUrl = `https://vivechak.bhaskarjha.dev${meta.route === '/' ? '/' : meta.route}`;
   const safeTitle = escapeHtmlAttr(meta.title);
   const safeDesc = escapeHtmlAttr(meta.description);
+  const ogType = meta.route.startsWith('/docs/') ? 'article' : 'website';
 
   const html = template
     .replace('<div id="root"><!--app-html--></div>', () => `<div id="root" data-ssr-route="${meta.route}">${appHtml}</div>`)
@@ -37,6 +38,10 @@ for (const meta of routes) {
       () => `<link rel="canonical" href="${canonicalUrl}" />`
     )
     .replace(
+      /<meta\s+property="og:type"\s+content="[^"]*"\s*\/>/,
+      () => `<meta property="og:type" content="${ogType}" />`
+    )
+    .replace(
       /<meta\s+property="og:url"\s+content="[^"]*"\s*\/>/,
       () => `<meta property="og:url" content="${canonicalUrl}" />`
     )
@@ -47,6 +52,10 @@ for (const meta of routes) {
     .replace(
       /<meta\s+property="og:description"\s+content="[^"]*"\s*\/>/,
       () => `<meta property="og:description" content="${safeDesc}" />`
+    )
+    .replace(
+      /<meta\s+name="twitter:url"\s+content="[^"]*"\s*\/>/,
+      () => `<meta name="twitter:url" content="${canonicalUrl}" />`
     )
     .replace(
       /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/>/,

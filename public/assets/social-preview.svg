@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Vivechak — Prove decisions before code. Evidence-graded research, red-teaming, and Phase 0 exit gates for AI coding agents in plain Git Markdown.">
+  <defs>
+    <!-- Deep Obsidian Architectural Canvas -->
+    <radialGradient id="bgCanvas" cx="24%" cy="46%" r="76%">
+      <stop offset="0%" stop-color="#132142" />
+      <stop offset="44%" stop-color="#080F20" />
+      <stop offset="100%" stop-color="#050811" />
+    </radialGradient>
+
+    <!-- Quiet Saffron Radiance Behind the Truth Drop -->
+    <radialGradient id="dropGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F2A33A" stop-opacity="0.46" />
+      <stop offset="38%" stop-color="#F2A33A" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#F2A33A" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Architectural Porcelain-Paper Finish for Canonical Mark -->
+    <linearGradient id="monolithFace" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="36%" stop-color="#F7F4EC" />
+      <stop offset="100%" stop-color="#E2DAC8" />
+    </linearGradient>
+
+    <!-- Machined Saffron Truth Drop -->
+    <radialGradient id="truthDrop" cx="34%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFFCE8" />
+      <stop offset="22%" stop-color="#FFD470" />
+      <stop offset="62%" stop-color="#F2A33A" />
+      <stop offset="100%" stop-color="#B85F08" />
+    </radialGradient>
+
+    <filter id="monolithShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#02040A" flood-opacity="0.78" />
+    </filter>
+  </defs>
+
+  <!-- Base Surface -->
+  <rect width="1200" height="630" fill="url(#bgCanvas)" />
+
+  <!-- Architectural Perimeter Hairline -->
+  <rect x="24" y="24" width="1152" height="582" rx="12" fill="none" stroke="#F4F0E6" stroke-opacity="0.09" stroke-width="1" />
+
+  <!-- Subtle Vertical Rule Separating Sculpture & Editorial Copy -->
+  <line x1="452" y1="64" x2="452" y2="566" stroke="#F4F0E6" stroke-opacity="0.09" stroke-width="1" />
+
+  <!-- LEFT STAGE: CANONICAL VIVECHAK EPISTEMIC SIEVE (Exact BRAND.md S=36 Geometry) -->
+  <g transform="translate(26, 52)">
+    <!-- Subtle Horological Reference Rings (Honoring 1S Clearspace) -->
+    <circle cx="210" cy="260" r="194" fill="none" stroke="#F4F0E6" stroke-opacity="0.05" stroke-width="1" />
+    <circle cx="210" cy="260" r="160" fill="none" stroke="#F2A33A" stroke-opacity="0.09" stroke-width="1" stroke-dasharray="3 7" />
+
+    <!-- Ambient Glow Pool under Drop -->
+    <circle cx="210" cy="342" r="128" fill="url(#dropGlow)" />
+
+    <!-- Canonical Mark (512x512 -> 0.80 scale, centered at x=210) -->
+    <g transform="translate(5.2, 42) scale(0.80)" filter="url(#monolithShadow)">
+      <!-- Subtle Machined Sapphire Depth Offset -->
+      <path
+        transform="translate(-4, 7)"
+        fill="#1E3D7A"
+        fill-rule="evenodd"
+        d="M 112 116.25 H 400 A 18 18 0 0 1 400 152.25 H 375.8 A 10.8 10.8 0 0 0 366.45 157.65 L 271.59 321.96 A 18 18 0 0 1 240.41 321.96 L 145.55 157.65 A 10.8 10.8 0 0 0 136.2 152.25 H 112 A 18 18 0 0 1 112 116.25 Z M 315.53 152.25 H 196.47 A 7.2 7.2 0 0 0 190.24 163.05 L 249.76 266.16 A 7.2 7.2 0 0 0 262.24 266.16 L 321.76 163.05 A 7.2 7.2 0 0 0 315.53 152.25 Z"
+      />
+      <!-- Primary Monolith Face -->
+      <path
+        fill="url(#monolithFace)"
+        fill-rule="evenodd"
+        d="M 112 116.25 H 400 A 18 18 0 0 1 400 152.25 H 375.8 A 10.8 10.8 0 0 0 366.45 157.65 L 271.59 321.96 A 18 18 0 0 1 240.41 321.96 L 145.55 157.65 A 10.8 10.8 0 0 0 136.2 152.25 H 112 A 18 18 0 0 1 112 116.25 Z M 315.53 152.25 H 196.47 A 7.2 7.2 0 0 0 190.24 163.05 L 249.76 266.16 A 7.2 7.2 0 0 0 262.24 266.16 L 321.76 163.05 A 7.2 7.2 0 0 0 315.53 152.25 Z"
+      />
+      <!-- Precision Saffron Aperture Inlay -->
+      <path
+        fill="none"
+        stroke="#F2A33A"
+        stroke-opacity="0.88"
+        stroke-width="2.6"
+        d="M 315.53 152.25 H 196.47 A 7.2 7.2 0 0 0 190.24 163.05 L 249.76 266.16 A 7.2 7.2 0 0 0 262.24 266.16 L 321.76 163.05 A 7.2 7.2 0 0 0 315.53 152.25 Z"
+      />
+      <!-- Canonical Saffron Truth Drop (0.6S clearance gap preserved) + Harmonic Ring -->
+      <circle cx="256" cy="374.16" r="33.5" fill="none" stroke="#F2A33A" stroke-opacity="0.34" stroke-width="1.6" />
+      <circle cx="256" cy="374.16" r="33.5" fill="none" stroke="#FFD470" stroke-opacity="0.86" stroke-width="2.4" stroke-dasharray="44 61" stroke-linecap="round" transform="rotate(-24 256 374.16)" />
+      <circle cx="256" cy="374.16" r="21.6" fill="url(#truthDrop)" />
+      <ellipse cx="249" cy="367" rx="5.8" ry="3.2" transform="rotate(-32 249 367)" fill="#FFFFFF" opacity="0.85" />
+    </g>
+
+    <!-- Quiet Architectural Specification Caption -->
+    <text x="210" y="488" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace" font-size="11.5" font-weight="600" fill="#F2A33A" letter-spacing="2.6">
+      THE EPISTEMIC SIEVE
+    </text>
+    <text x="210" y="510" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace" font-size="10.5" font-weight="500" fill="#7D8EAE" letter-spacing="1.4">
+      LOCAL GO BINARY · PLAIN GIT MARKDOWN
+    </text>
+  </g>
+
+  <!-- RIGHT STAGE: EDITORIAL COMMANDING COPY -->
+  <g transform="translate(504, 88)">
+    <!-- Eyebrow Metadata -->
+    <text y="0" font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace" font-size="12.5" font-weight="600" fill="#F2A33A" letter-spacing="2.2">
+      OPEN-SOURCE MCP SERVER &amp; CLI · V0.1.0
+    </text>
+
+    <!-- Brand Lockup: Vivechak | Pure-Vector Devanagari -->
+    <g transform="translate(0, 62)">
+      <text font-family="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="34" font-weight="700" fill="#F7F4EC" letter-spacing="-0.8">
+        Vivechak
+      </text>
+      <line x1="168" y1="-26" x2="168" y2="4" stroke="#F4F0E6" stroke-opacity="0.24" stroke-width="1.4" />
+      <g transform="translate(188, -32) scale(0.58)">
+        <path fill="#F7F4EC" fill-rule="evenodd" d="M 14.75 0.09 L 23.84 0.00 L 28.34 1.25 L 32.59 3.25 L 39.25 8.09 L 44.12 13.22 L 48.03 18.56 L 48.88 18.97 L 79.59 18.69 L 79.72 18.12 L 76.12 11.72 L 73.00 8.09 L 70.59 7.00 L 63.62 6.97 L 62.53 6.31 L 62.50 1.84 L 62.91 1.25 L 73.12 0.97 L 76.00 2.09 L 79.12 5.22 L 86.62 18.47 L 87.41 18.94 L 187.84 19.25 L 188.00 24.34 L 187.34 24.94 L 164.88 24.97 L 164.28 25.38 L 164.41 30.94 L 168.91 29.00 L 174.12 28.97 L 178.25 31.09 L 180.12 32.97 L 181.72 35.88 L 182.50 39.09 L 182.50 41.59 L 181.22 46.06 L 178.12 50.72 L 173.50 54.59 L 171.16 55.44 L 170.38 54.72 L 167.53 49.62 L 171.25 46.84 L 173.12 44.72 L 174.22 42.56 L 174.47 39.62 L 173.38 37.22 L 171.34 36.00 L 170.16 36.00 L 167.12 37.97 L 164.28 42.12 L 164.25 60.09 L 163.59 60.94 L 156.50 60.84 L 156.03 60.06 L 156.25 53.84 L 155.84 53.00 L 154.66 53.00 L 152.62 53.97 L 147.62 53.97 L 144.91 52.94 L 141.75 50.84 L 139.88 48.72 L 137.53 44.06 L 137.25 42.34 L 137.53 37.12 L 139.38 33.22 L 142.50 30.34 L 145.66 29.00 L 151.84 29.00 L 155.84 30.69 L 156.25 30.09 L 156.25 25.84 L 155.12 24.97 L 130.38 24.97 L 129.62 25.47 L 129.34 60.69 L 121.75 60.84 L 121.25 60.09 L 121.44 53.84 L 120.62 52.78 L 116.09 54.94 L 110.88 54.97 L 108.66 54.69 L 106.25 53.59 L 103.75 51.59 L 102.38 49.72 L 101.28 47.06 L 101.00 43.09 L 102.72 38.38 L 101.88 37.97 L 96.16 37.69 L 96.03 32.38 L 96.88 31.97 L 118.25 32.09 L 118.75 32.84 L 118.62 37.47 L 117.88 37.97 L 113.66 38.00 L 110.91 39.25 L 109.88 40.22 L 109.03 42.38 L 109.28 44.81 L 110.75 46.84 L 113.16 47.94 L 114.84 47.94 L 118.75 46.09 L 121.22 43.56 L 121.44 25.84 L 120.84 25.00 L 88.38 25.22 L 88.25 60.09 L 87.38 60.97 L 80.50 60.84 L 80.03 60.06 L 80.25 54.84 L 79.84 53.75 L 75.88 54.97 L 70.38 54.97 L 66.66 53.44 L 62.38 49.97 L 60.78 47.56 L 59.53 44.56 L 59.25 42.59 L 59.53 38.12 L 61.38 34.22 L 63.25 32.09 L 65.91 30.25 L 69.12 28.97 L 75.09 29.00 L 79.84 30.69 L 80.25 30.09 L 80.12 25.47 L 79.12 24.97 L 51.66 25.00 L 51.25 25.59 L 51.22 60.31 L 50.38 60.97 L 43.88 60.97 L 43.03 60.06 L 43.25 54.84 L 42.84 53.75 L 38.88 54.97 L 33.38 54.97 L 29.66 53.44 L 27.25 51.84 L 24.62 48.97 L 22.78 45.31 L 22.25 42.59 L 22.53 38.12 L 24.38 34.22 L 26.25 32.09 L 28.91 30.25 L 32.12 28.97 L 38.09 29.00 L 42.84 30.69 L 43.25 30.09 L 43.12 25.47 L 42.12 24.97 L 14.88 24.97 L 14.25 25.59 L 14.22 60.31 L 13.38 60.97 L 6.66 60.94 L 6.03 60.06 L 6.22 25.62 L 5.34 25.00 L 0.16 24.69 L 0.00 19.59 L 0.66 19.00 L 5.12 18.97 L 5.97 18.56 L 4.75 13.34 L 4.75 10.34 L 5.53 7.12 L 8.75 2.84 L 11.91 1.00 Z M 18.41 6.00 L 15.00 7.34 L 13.03 9.62 L 12.25 13.09 L 12.78 16.31 L 13.75 18.59 L 14.62 18.97 L 34.12 18.97 L 39.62 18.97 L 40.22 18.56 L 40.12 17.97 L 35.25 13.09 L 29.75 9.09 L 25.34 7.00 L 21.34 6.00 Z M 36.16 35.00 L 33.00 36.34 L 31.38 37.97 L 30.31 41.34 L 31.03 44.06 L 32.50 46.09 L 35.16 47.69 L 37.38 47.97 L 40.25 46.84 L 42.12 44.97 L 43.22 42.81 L 43.25 38.59 L 42.38 37.22 L 41.09 36.25 L 37.84 35.00 Z M 73.16 35.00 L 70.00 36.34 L 68.38 37.97 L 67.31 41.34 L 68.03 44.06 L 69.50 46.09 L 72.16 47.69 L 74.38 47.97 L 77.25 46.84 L 79.12 44.97 L 80.22 42.81 L 80.25 38.59 L 79.38 37.22 L 78.09 36.25 L 74.84 35.00 Z M 149.41 35.00 L 147.25 36.09 L 146.03 37.38 L 145.28 39.12 L 145.28 42.31 L 146.38 44.47 L 147.75 45.84 L 150.16 46.94 L 152.00 46.84 L 154.25 45.84 L 155.97 43.31 L 156.22 38.38 L 153.59 36.00 L 151.09 35.00 Z"/>
+      </g>
+    </g>
+
+    <!-- Primary Display Thesis (Razor-legible at 360px chat unfurl thumbnails) -->
+    <text y="164" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="66" font-weight="800" fill="#F7F4EC" letter-spacing="-2.6">
+      Prove decisions
+    </text>
+    <text y="236" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="66" font-weight="800" fill="#F2A33A" letter-spacing="-2.6">
+      before code.
+    </text>
+
+    <!-- Executive + Engineer Clarity Copy -->
+    <text y="298" font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="19.5" font-weight="400" fill="#B8C4DA">
+      Evidence-graded research, red-team SHA-256 checks, and human
+    </text>
+    <text y="328" font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="19.5" font-weight="400" fill="#B8C4DA">
+      sign-off for AI coding agents — stored locally in plain Git Markdown.
+    </text>
+
+    <!-- Three Scopes Architectural Rail (Clean Hairlines, Zero Box Clutter) -->
+    <g transform="translate(0, 372)">
+      <line x1="0" y1="0" x2="624" y2="0" stroke="#F4F0E6" stroke-opacity="0.12" stroke-width="1" />
+
+      <!-- Scope 1 -->
+      <g transform="translate(0, 28)">
+        <text font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" font-weight="600" fill="#F2A33A" letter-spacing="1.4">01 · C-NNN</text>
+        <text y="25" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="700" fill="#F7F4EC">Comparison</text>
+        <text y="45" font-family="'Inter', sans-serif" font-size="13.5" fill="#8C9BB6">WEP matrix · 1 session</text>
+      </g>
+
+      <!-- Scope 2 -->
+      <g transform="translate(216, 28)">
+        <text font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" font-weight="600" fill="#F2A33A" letter-spacing="1.4">02 · D-NNN</text>
+        <text y="25" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="700" fill="#F7F4EC">Decision ADR</text>
+        <text y="45" font-family="'Inter', sans-serif" font-size="13.5" fill="#8C9BB6">Red-team + TTY sign-off</text>
+      </g>
+
+      <!-- Scope 3 -->
+      <g transform="translate(436, 28)">
+        <text font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" font-weight="600" fill="#3CE3A8" letter-spacing="1.4">03 · FAD</text>
+        <text y="25" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="700" fill="#F7F4EC">Project DAG</text>
+        <text y="45" font-family="'Inter', sans-serif" font-size="13.5" fill="#8C9BB6">Phase 0 Gate (G1–G12)</text>
+      </g>
+    </g>
+
+    <!-- Bottom Colophon Rule -->
+    <g transform="translate(0, 502)">
+      <line x1="0" y1="-26" x2="624" y2="-26" stroke="#F4F0E6" stroke-opacity="0.09" stroke-width="1" />
+      <text font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace" font-size="12" font-weight="600" fill="#8C9BB6" letter-spacing="1.1">
+        GRADES A–E <tspan fill="#F2A33A">·</tspan> 9 MCP TOOLS <tspan fill="#F2A33A">·</tspan> 0 TELEMETRY <tspan fill="#F2A33A">·</tspan> <tspan fill="#F7F4EC">vivechak.bhaskarjha.dev</tspan>
+      </text>
+    </g>
+  </g>
+</svg>
