@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   QUAT_IDENTITY,
   buildCanonicalContours,
+  buildSplitContours,
   quatAngleToIdentity,
   quatFromAxisAngle,
   quatMultiply,
@@ -22,9 +23,11 @@ interface VivechakLogoCanvas2DProps {
   theme: ThemeMode;
   impulseNonce: number;
   replayNonce: number;
+  resetAxisNonce?: number;
   onQuickPulse?: () => void;
   onSuperDistill?: () => void;
   onTruthPulse?: () => void;
+  onCustomSpinChange?: (custom: boolean) => void;
 }
 
 // Exact canonical Vivechak vector geometry on 512x512 canvas (docs/BRAND.md: S = 36)
@@ -83,9 +86,11 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
   theme,
   impulseNonce,
   replayNonce,
+  resetAxisNonce = 0,
   onQuickPulse,
   onSuperDistill,
   onTruthPulse,
+  onCustomSpinChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const modeRef = useRef<SieveMode>(mode);
@@ -93,6 +98,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
   const quickCbRef = useRef(onQuickPulse);
   const superCbRef = useRef(onSuperDistill);
   const pulseCbRef = useRef(onTruthPulse);
+  const customSpinCbRef = useRef(onCustomSpinChange);
   const entranceRef = useRef(0);
   const condenseRef = useRef(1);
   const condenseSuperRef = useRef(false);
@@ -105,6 +111,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
   quickCbRef.current = onQuickPulse;
   superCbRef.current = onSuperDistill;
   pulseCbRef.current = onTruthPulse;
+  customSpinCbRef.current = onCustomSpinChange;
 
   useEffect(() => {
     if (impulseNonce > 0) {
@@ -121,6 +128,12 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       resetQuatRef.current = true;
     }
   }, [replayNonce]);
+
+  useEffect(() => {
+    if (resetAxisNonce > 0) {
+      resetQuatRef.current = true;
+    }
+  }, [resetAxisNonce]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -157,22 +170,22 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
     const ripples: Ripple[] = [];
 
     const spawnClaim = (xOverride?: number, yOverride?: number, forceKind?: 'verified' | 'noise') => {
-      if (claims.length >= 32) return;
-      const isVerified = forceKind ? forceKind === 'verified' : Math.random() < 0.42;
+      if (claims.length >= 36) return;
+      const isVerified = forceKind ? forceKind === 'verified' : Math.random() < 0.46;
       const x =
         xOverride !== undefined
           ? Math.max(108, Math.min(404, xOverride))
           : isVerified
             ? 256 + (Math.random() - 0.5) * 98
             : 256 + (Math.random() < 0.5 ? -1 : 1) * (54 + Math.random() * 88);
-      const y = yOverride !== undefined ? yOverride : 52 + Math.random() * 26;
+      const y = yOverride !== undefined ? yOverride : 50 + Math.random() * 26;
       claims.push({
         x,
         y,
         vx: (Math.random() - 0.5) * 14,
         vy: 38 + Math.random() * 26,
         kind: isVerified ? 'verified' : 'noise',
-        r: isVerified ? 2.5 + Math.random() * 1.1 : 2.1 + Math.random() * 0.9,
+        r: isVerified ? 3.2 + Math.random() * 1.1 : 2.5 + Math.random() * 0.9,
         life: 0,
         maxLife: 3.4 + Math.random() * 1.2,
         state: 'entering',
@@ -183,10 +196,22 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
     const forceChargePreview = search.includes('charging=1');
     const forceOrbitPreview = search.includes('orbit=1');
     const forceFlipPreview = search.includes('flip=1');
-    if (search.includes('settled=1') || forceChargePreview || forceOrbitPreview || forceFlipPreview) {
+    const forceCondensePreview = search.includes('midcondense=1');
+    if (
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview
+    ) {
       entranceRef.current = 1;
       for (let i = 0; i < 14; i++) {
-        spawnClaim(undefined, 70 + Math.random() * 145);
+        spawnClaim(undefined, 70 + Math.random() * 165, i % 2 === 0 ? 'verified' : undefined);
+      }
+      if (forceCondensePreview) {
+        condenseRef.current = 0.44;
+        ripples.push({ age: 0.24, maxAge: 1.12, maxRadius: 72, strong: true });
+        ripples.push({ age: 0.08, maxAge: 1.05, maxRadius: 52, strong: false });
       }
     } else if (search.includes('midforge=1')) {
       entranceRef.current = 0.58;
@@ -194,6 +219,13 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
     }
 
     const contours = buildCanonicalContours();
+    const splitContours = buildSplitContours();
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const DEFAULT_CRUISE_AXIS: Vec3 = [0.05 / Math.hypot(0.05, 1.0, 0.0), 1.0 / Math.hypot(0.05, 1.0, 0.0), 0];
+    const DEFAULT_CRUISE_SPEED = 0.62; // ~10.1s per full 360° 3D revolution (~35.5°/sec)
+    let cruiseAxis: Vec3 = [...DEFAULT_CRUISE_AXIS];
     let userQuat: Quat = QUAT_IDENTITY;
     if (forceOrbitPreview) {
       userQuat = quatNormalize(
@@ -211,7 +243,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       );
     }
 
-    // Unified tactile pointer state (Hover Pour + Hold-to-Distill + Full 360° X/Y/Z Quaternion Trackball + Flick Inertia + Elastic Drop Pull)
+    // Unified tactile pointer state (Hover Pour + Hold-to-Distill + Slow 360° Horological Auto-Rotate + Axis-Memory Flick Cruise + Elastic Drop Pull)
     const pointer = { x: 0, y: 0, tx: 0, ty: 0, svgX: 256, svgY: 256, inside: false };
     const gesture = {
       mode: (forceChargePreview ? 'charge' : forceOrbitPreview || forceFlipPreview ? 'orbit' : 'idle') as GestureMode,
@@ -229,7 +261,11 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       velX: 0,
       velY: 0,
       velZ: 0,
-      stillTimer: 0,
+      extraSpeed: 0,
+      cruiseSpeed: DEFAULT_CRUISE_SPEED,
+      customSpin: false,
+      hudTimer: 0,
+      hoverBrake: 1,
       resetting: false,
       pullX: 0,
       pullY: 0,
@@ -244,8 +280,8 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       const rect = canvas.getBoundingClientRect();
       const unit = Math.min(rect.width, rect.height) / 512;
       return {
-        sx: (clientX - rect.left - rect.width / 2) / (unit * 1.04) + 256,
-        sy: (clientY - rect.top - rect.height / 2) / (unit * 1.04) + 248,
+        sx: (clientX - rect.left - rect.width / 2) / (unit * 0.96) + 256,
+        sy: (clientY - rect.top - rect.height / 2) / (unit * 0.96) + 244,
         nx: ((clientX - rect.left) / rect.width) * 2 - 1,
         ny: ((clientY - rect.top) / rect.height) * 2 - 1,
         rect,
@@ -256,7 +292,13 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       gesture.velX = 0;
       gesture.velY = 0;
       gesture.velZ = 0;
+      gesture.extraSpeed = 0;
+      gesture.cruiseSpeed = DEFAULT_CRUISE_SPEED;
+      gesture.customSpin = false;
+      cruiseAxis = [...DEFAULT_CRUISE_AXIS];
       gesture.resetting = true;
+      gesture.hudTimer = 0;
+      customSpinCbRef.current?.(false);
       soundEngine.playSieveDrop();
     };
 
@@ -273,20 +315,24 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       gesture.prevX = e.clientX;
       gesture.prevY = e.clientY;
       gesture.prevAngle = Math.atan2(ny, nx);
-      gesture.zRoll = e.shiftKey || Math.hypot(nx, ny) > 0.66;
+      gesture.zRoll = e.shiftKey || Math.hypot(nx, ny) > 0.68;
       gesture.downTime = performance.now();
       gesture.chargeTriggered = false;
       gesture.lastChargeTick = 0;
       gesture.resetting = false;
-      gesture.stillTimer = 0;
       gesture.velX = 0;
       gesture.velY = 0;
       gesture.velZ = 0;
+      gesture.extraSpeed = 0;
 
-      // Did the user grab directly onto the upright Saffron Truth Drop?
-      const distToDrop = Math.hypot(sx - 256, sy - 374.16);
-      const nearHome = quatAngleToIdentity(userQuat) < 0.25;
-      if (nearHome && distToDrop < 46 && entranceRef.current > 0.85) {
+      // Project the actual rotated bottom Saffron Drop position so grabbing it works even while turning
+      const dropRot = quatRotateVec(userQuat, [0, 128.16, 0]);
+      const projS = 980 / Math.max(120, 980 - dropRot[2]);
+      const dropScreenX = 256 + dropRot[0] * projS;
+      const dropScreenY = 246 + dropRot[1] * projS;
+      const frontNormal = quatRotateVec(userQuat, [0, 0, 1]);
+      const distToDrop = Math.hypot(sx - dropScreenX, sy - dropScreenY);
+      if (Math.abs(frontNormal[2]) > 0.55 && distToDrop < 48 && entranceRef.current > 0.85) {
         gesture.mode = 'pull-drop';
         soundEngine.playTick(680);
       } else {
@@ -357,17 +403,22 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
           gesture.prevX = e.clientX;
           gesture.prevY = e.clientY;
           gesture.prevAngle = curAngle;
-          gesture.stillTimer = 0;
+          gesture.hudTimer = 2.0;
+          if (!gesture.customSpin) {
+            gesture.customSpin = true;
+            customSpinCbRef.current?.(true);
+          }
         }
         return;
       }
 
       // Idle hover: interactive cursor pour across upper funnel mouth!
       if (isInside) {
-        canvas.style.cursor = Math.hypot(nx, ny) > 0.66 ? 'alias' : 'grab';
+        canvas.style.cursor = Math.hypot(nx, ny) > 0.68 ? 'alias' : 'grab';
         const now = performance.now();
+        const frontNormal = quatRotateVec(userQuat, [0, 0, 1]);
         if (
-          quatAngleToIdentity(userQuat) < 0.25 &&
+          Math.abs(frontNormal[2]) > 0.45 &&
           sy > 35 &&
           sy < 195 &&
           sx > 96 &&
@@ -410,6 +461,24 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         }
       } else if (prevMode === 'orbit') {
         soundEngine.playTick(540);
+        // Adopt the user's exact 3D flick axis & spin direction (CW / CCW / diagonal / Z-roll) as continuous cruise!
+        const releaseSpeed = Math.hypot(gesture.velX, gesture.velY, gesture.velZ);
+        if (releaseSpeed > 0.18) {
+          cruiseAxis = [
+            gesture.velX / releaseSpeed,
+            gesture.velY / releaseSpeed,
+            gesture.velZ / releaseSpeed,
+          ];
+          gesture.cruiseSpeed = 0.62;
+          gesture.extraSpeed = Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
+        } else {
+          gesture.cruiseSpeed = 0.36;
+          gesture.extraSpeed = 0;
+        }
+        gesture.velX = 0;
+        gesture.velY = 0;
+        gesture.velZ = 0;
+        gesture.hudTimer = 1.9;
       }
 
       gesture.mode = 'idle';
@@ -431,15 +500,15 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
     window.addEventListener('pointercancel', finishGesture);
 
     const resize = () => {
-      const parent = canvas.parentElement;
-      const w = Math.max(280, parent?.clientWidth || 520);
-      const h = Math.max(280, parent?.clientHeight || 520);
+      const w = Math.max(260, canvas.clientWidth || canvas.parentElement?.clientWidth || 468);
+      const h = Math.max(260, canvas.clientHeight || canvas.parentElement?.clientHeight || 468);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
     };
     resize();
     const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
     if (canvas.parentElement) ro.observe(canvas.parentElement);
 
     let rafId = 0;
@@ -452,67 +521,255 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
     let dropMagX = 0;
     let dropMagY = 0;
     let prevCondenseImpact = false;
+    let initialStreamSeeded =
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview;
     let entranceDropFired =
-      search.includes('settled=1') || forceChargePreview || forceOrbitPreview || forceFlipPreview;
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview;
 
     // True 3D Extruded Perspective Mesh Renderer for Full 360° X/Y/Z Inspection in Canvas2D!
+    // Supports monolithic Sift, 3-piece Raw Chat aperture split, 3D emerald seal ring, charge ring,
+    // depth-sorted claim motes, and a whisper-subtle orbital gimbal reticle during active drag.
     const drawExtruded3D = (
       q: Quat,
       isLight: boolean,
-      isSealed: boolean,
-      isNoise: boolean,
+      emeraldVis: number,
+      splitBlend: number,
       floatY: number,
       dropAppear: number,
-      ch: number
+      ch: number,
+      orbitGuide: number,
+      isZRoll: boolean
     ) => {
       const HALF_D = 15;
       const FOV = 980;
       const keyLight: Vec3 = [0.44, -0.58, 0.69];
+      const isSealed = emeraldVis > 0.35;
+      const isNoise = splitBlend > 0.45;
 
       const xform = (v: Vec3) => {
         const r = quatRotateVec(q, v);
-        const s = FOV / (FOV - r[2]);
+        const s = FOV / Math.max(120, FOV - r[2]);
         return { x: r[0] * s, y: (r[1] + floatY) * s, z: r[2], s };
       };
 
-      const projectLoop = (pts: Point2D[], zLocal: number) =>
-        pts.map((p) => xform([p.x, p.y, zLocal]));
+      // Subtle Horological 3D Orbital Gimbal Reticle (visible ONLY while actively orbiting!)
+      if (orbitGuide > 0.03) {
+        const gR = 204;
+        const gCol = isZRoll
+          ? isLight ? '184, 108, 8' : '242, 163, 58'
+          : isLight ? '18, 32, 63' : '244, 240, 232';
+        ctx.save();
+        ctx.strokeStyle = `rgba(${gCol}, ${orbitGuide * (isZRoll ? 0.42 : 0.16)})`;
+        ctx.lineWidth = isZRoll ? 1.4 : 0.9;
+        ctx.setLineDash(isZRoll ? [6, 5] : [3, 6]);
+        ctx.beginPath();
+        for (let i = 0; i <= 64; i++) {
+          const a = (i / 64) * Math.PI * 2;
+          const pt = xform([Math.cos(a) * gR, Math.sin(a) * gR, 0]);
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+        // Equatorial meridian ring for 3D depth reference
+        ctx.strokeStyle = `rgba(${gCol}, ${orbitGuide * 0.12})`;
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        for (let i = 0; i <= 64; i++) {
+          const a = (i / 64) * Math.PI * 2;
+          const pt = xform([Math.cos(a) * gR, 0, Math.sin(a) * gR]);
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
 
-      const outerF = projectLoop(contours.outer, HALF_D);
-      const outerB = projectLoop(contours.outer, -HALF_D);
-      const innerF = projectLoop(contours.inner, HALF_D);
-      const innerB = projectLoop(contours.inner, -HALF_D);
-
-      const nFront = quatRotateVec(q, [0, 0, 1]);
-      const frontIsNear = nFront[2] >= 0;
-      const nearOuter = frontIsNear ? outerF : outerB;
-      const nearInner = frontIsNear ? innerF : innerB;
-      const farOuter = frontIsNear ? outerB : outerF;
-      const farInner = frontIsNear ? innerB : innerF;
-
-      const drop3D = xform([0, 128.16, 0]);
+      const dropLocalX = dropMagX + gesture.pullX;
+      const dropLocalY = 128.16 + dropMagY + gesture.pullY + Math.sin(elapsed * 1.65) * 2.3;
+      const drop3D = xform([dropLocalX, dropLocalY, 0]);
       const dropBehind = drop3D.z < -2;
 
-      const draw3DDrop = () => {
+      const draw3DDropAndRings = () => {
         if (dropAppear < 0.02) return;
-        const r = 21.6 * dropAppear * drop3D.s * (1 + ch * 0.08);
+        const baseR = Math.max(1, 21.6 * dropAppear * drop3D.s * (1 + ch * 0.08));
+        const sq = Math.max(-0.2, Math.min(0.24, dropSquashRef.current));
+        const rx = baseR * (1 + sq * 0.82);
+        const ry = baseR * (1 - sq * 0.70);
+
+        // Elastic liquid-gold tether when user pulls the bottom Saffron Drop
+        const pullDist = Math.hypot(gesture.pullX, gesture.pullY);
+        if (pullDist > 3 && !isNoise) {
+          const apexPt = xform([0, 84.5, 0]);
+          ctx.save();
+          ctx.strokeStyle = isLight ? 'rgba(206, 120, 8, 0.85)' : 'rgba(255, 214, 115, 0.9)';
+          ctx.lineWidth = Math.max(1.2, 5.2 - pullDist * 0.07);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(apexPt.x, apexPt.y);
+          ctx.quadraticCurveTo((apexPt.x + drop3D.x) * 0.5, (apexPt.y + drop3D.y) * 0.5 - 4, drop3D.x, drop3D.y - ry * 0.7);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 3D-projected Perpetual Precision Circular Ring Around Bottom Bubble (All 3 Modes + Cardinal Ticks!)
+        const sealR = 34.5 + Math.min(4.5, Math.abs(dropSquashRef.current) * 14) + ch * 1.8;
+        const ringCol = isSealed
+          ? isLight ? '12, 134, 92' : '60, 227, 168'
+          : isNoise
+            ? isLight ? '184, 50, 44' : '224, 88, 82'
+            : isLight ? '184, 108, 8' : '248, 190, 82';
+        ctx.save();
+        ctx.strokeStyle = `rgba(${ringCol}, ${(isSealed ? 0.54 : isNoise ? 0.52 : 0.48) * dropAppear})`;
+        ctx.lineWidth = isSealed ? 1.8 : 1.6;
+        if (isNoise) ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const a = (i / 48) * Math.PI * 2;
+          const pt = xform([dropLocalX + Math.cos(a) * sealR, dropLocalY + Math.sin(a) * sealR, 0]);
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (!isNoise) {
+          // Two precision caliper arcs anchored cleanly to the rotating 3D sculpture (no competing spin)
+          const arcRot = 0;
+          ctx.strokeStyle = `rgba(${ringCol}, ${(isSealed ? 0.98 : 0.94) * dropAppear})`;
+          ctx.lineWidth = isSealed ? 2.7 : 2.4;
+          ctx.lineCap = 'round';
+          for (const baseA of [0, Math.PI]) {
+            ctx.beginPath();
+            for (let i = 0; i <= 16; i++) {
+              const a = baseA + arcRot - 0.58 + (1.16 * i) / 16;
+              const pt = xform([dropLocalX + Math.cos(a) * sealR, dropLocalY + Math.sin(a) * sealR, 0]);
+              if (i === 0) ctx.moveTo(pt.x, pt.y);
+              else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+          }
+
+          // 4 precision cardinal vernier ticks around the circular halo ring
+          const tickHalf = isSealed ? 4.2 : 2.7;
+          ctx.strokeStyle = `rgba(${ringCol}, ${(isSealed ? 0.94 : 0.64) * dropAppear})`;
+          ctx.lineWidth = isSealed ? 1.75 : 1.35;
+          for (let k = 0; k < 4; k++) {
+            const a = arcRot + (k * Math.PI) / 2;
+            const p0 = xform([dropLocalX + Math.cos(a) * (sealR - tickHalf), dropLocalY + Math.sin(a) * (sealR - tickHalf), 0]);
+            const p1 = xform([dropLocalX + Math.cos(a) * (sealR + tickHalf), dropLocalY + Math.sin(a) * (sealR + tickHalf), 0]);
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+
+        // 3D-projected Expanding Impact Ripples
+        for (const rp of ripples) {
+          if (rp.age < 0) continue;
+          const p = rp.age / rp.maxAge;
+          const easeP = 1 - Math.pow(1 - p, 2.5);
+          const rad = 22 + easeP * rp.maxRadius;
+          const op = (1 - p) * (rp.strong ? (isLight ? 0.76 : 0.88) : 0.48);
+          ctx.save();
+          ctx.strokeStyle = `rgba(${ringCol}, ${op})`;
+          ctx.lineWidth = (rp.strong ? 2.2 : 1.35) * (1 - p * 0.35);
+          ctx.beginPath();
+          for (let i = 0; i <= 40; i++) {
+            const a = (i / 40) * Math.PI * 2;
+            const pt = xform([dropLocalX + Math.cos(a) * rad, dropLocalY + Math.sin(a) * rad * 0.86, -2]);
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 3D-projected Falling Condensation Teardrop + Tapered Meniscus across the 0.6S gap
+        const curCT = condenseRef.current;
+        if ((curCT < 0.66 || ch > 0.14) && !isNoise) {
+          const isHoldingCharge = ch > 0.14 && curCT >= 0.66;
+          const dropLocalYPos = isHoldingCharge
+            ? 84.5 + 5 + ch * 17
+            : curCT < 0.40
+              ? 84.5 + 4 + (1 - Math.pow(1 - curCT / 0.40, 2)) * 21
+              : 109.5 + Math.pow((curCT - 0.40) / 0.26, 2) * (dropLocalY - 109.5);
+          const td = xform([0, dropLocalYPos, 0]);
+          const tr = Math.max(2.4, (isHoldingCharge ? 3.5 + ch * 6.5 : curCT < 0.40 ? 3.6 + (curCT / 0.40) * 6.2 : 8.6) * td.s);
+          ctx.save();
+          // Tapered meniscus bridge from V-apex during swelling phase
+          if (isHoldingCharge || curCT < 0.40) {
+            const apexPt = xform([0, 84.5, 0]);
+            ctx.strokeStyle = isLight ? '#d9810c' : '#ffcf66';
+            ctx.lineWidth = tr * 0.65;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(apexPt.x, apexPt.y);
+            ctx.lineTo(td.x, td.y);
+            ctx.stroke();
+          }
+          // Luminous halo for 1× DPR Full HD clarity
+          ctx.fillStyle = isLight ? 'rgba(218, 128, 12, 0.25)' : 'rgba(255, 206, 102, 0.30)';
+          ctx.beginPath();
+          ctx.arc(td.x, td.y, tr * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          const tg = ctx.createRadialGradient(td.x - tr * 0.22, td.y - tr * 0.22, 0.5, td.x, td.y, tr);
+          tg.addColorStop(0, '#fffce8');
+          tg.addColorStop(0.55, '#ffca5a');
+          tg.addColorStop(1, isLight ? '#bd6406' : '#d6780e');
+          ctx.fillStyle = tg;
+          ctx.beginPath();
+          ctx.ellipse(td.x, td.y, tr * 0.86, tr * 1.22, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 3D-projected Charge Ring when holding
+        if (ch > 0.04) {
+          const ringR = 34.5;
+          const cCol = isLight ? '184, 108, 8' : '248, 190, 82';
+          ctx.save();
+          ctx.strokeStyle = `rgba(${cCol}, 0.94)`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          const steps = Math.max(4, Math.round(ch * 48));
+          for (let i = 0; i <= steps; i++) {
+            const a = -Math.PI / 2 + (ch * Math.PI * 2 * i) / steps;
+            const pt = xform([dropLocalX + Math.cos(a) * ringR, dropLocalY + Math.sin(a) * ringR, 4]);
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
         ctx.save();
         ctx.translate(drop3D.x, drop3D.y);
         if (!isLight) {
           const auraCol = isSealed ? '60,227,168' : isNoise ? '204,76,72' : '242,163,58';
-          const aura = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 3.1);
-          aura.addColorStop(0, `rgba(${auraCol}, 0.34)`);
+          const aura = ctx.createRadialGradient(0, 0, baseR * 0.2, 0, 0, baseR * 3.1);
+          aura.addColorStop(0, `rgba(${auraCol}, 0.36)`);
           aura.addColorStop(1, `rgba(${auraCol}, 0)`);
           ctx.fillStyle = aura;
           ctx.beginPath();
-          ctx.arc(0, 0, r * 3.1, 0, Math.PI * 2);
+          ctx.arc(0, 0, baseR * 3.1, 0, Math.PI * 2);
           ctx.fill();
         } else {
           ctx.shadowColor = 'rgba(176, 98, 6, 0.28)';
           ctx.shadowBlur = 14;
           ctx.shadowOffsetY = 5;
         }
-        const dg = ctx.createRadialGradient(-r * 0.34, -r * 0.34, r * 0.06, 0, 0, r);
+        const dg = ctx.createRadialGradient(-rx * 0.34, -ry * 0.34, baseR * 0.06, 0, 0, Math.max(rx, ry));
         if (isNoise) {
           dg.addColorStop(0, '#d6564e');
           dg.addColorStop(1, '#38151a');
@@ -524,112 +781,215 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         }
         ctx.fillStyle = dg;
         ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
-      };
-
-      const traceFace = (outerLoop: { x: number; y: number }[], innerLoop: { x: number; y: number }[]) => {
-        ctx.beginPath();
-        outerLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-        ctx.closePath();
-        innerLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-        ctx.closePath();
-      };
-
-      const drawCap = (
-        outerLoop: { x: number; y: number }[],
-        innerLoop: { x: number; y: number }[],
-        facingLight: number,
-        isFrontVisible: boolean
-      ) => {
-        ctx.save();
-        traceFace(outerLoop, innerLoop);
-        const lit = 0.55 + Math.max(0, facingLight) * 0.45;
-        const g = ctx.createLinearGradient(-150, -140, 150, 120);
-        if (isLight) {
-          const b1 = Math.round(28 + lit * 26);
-          const b2 = Math.round(52 + lit * 44);
-          const b3 = Math.round(100 + lit * 56);
-          g.addColorStop(0, `rgb(${b1 + 14}, ${b2 + 22}, ${b3 + 22})`);
-          g.addColorStop(0.52, `rgb(${b1}, ${b2 - 12}, ${b3 - 18})`);
-          g.addColorStop(1, `rgb(${Math.max(10, b1 - 12)}, ${Math.max(20, b2 - 26)}, ${Math.max(40, b3 - 42)})`);
-        } else {
-          const vHi = Math.min(255, Math.round(218 + lit * 37));
-          const vMid = Math.min(250, Math.round(196 + lit * 42));
-          const vLo = Math.round(158 + lit * 38);
-          g.addColorStop(0, `rgb(${vMid}, ${vMid - 5}, ${vMid - 14})`);
-          g.addColorStop(0.48, `rgb(${vHi}, ${vHi - 2}, ${vHi - 8})`);
-          g.addColorStop(1, `rgb(${vLo}, ${vLo - 6}, ${vLo - 14})`);
-        }
-        ctx.fillStyle = g;
-        ctx.fill('evenodd');
-
-        if (isFrontVisible) {
-          ctx.strokeStyle = isLight ? 'rgba(210, 228, 255, 0.36)' : 'rgba(255, 255, 255, 0.52)';
-          ctx.lineWidth = 1.1;
-          ctx.stroke();
-
-          // Machined Inner Aperture Bezel Inlay (on BOTH front & back faces!)
+        if (!isNoise) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
           ctx.beginPath();
-          innerLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-          ctx.closePath();
-          ctx.strokeStyle = isSealed
-            ? isLight
-              ? 'rgba(12, 134, 92, 0.92)'
-              : 'rgba(60, 227, 168, 0.95)'
-            : isLight
-              ? 'rgba(218, 140, 24, 0.9)'
-              : 'rgba(252, 194, 86, 0.9)';
-          ctx.lineWidth = 2.0;
-          ctx.stroke();
+          ctx.ellipse(-rx * 0.33, -ry * 0.33, rx * 0.23, ry * 0.13, -0.65, 0, Math.PI * 2);
+          ctx.fill();
         }
         ctx.restore();
       };
 
-      // Build & depth-sort all extruded outer + inner metallic side wall quads!
-      interface SideQuad {
-        pts: { x: number; y: number }[];
-        avgZ: number;
-        light: number;
-        isInner: boolean;
-      }
-      const quads: SideQuad[] = [];
-      const pushWalls = (
-        raw: Point2D[],
-        fLoop: { x: number; y: number; z: number }[],
-        bLoop: { x: number; y: number; z: number }[],
-        isInner: boolean
-      ) => {
-        const len = raw.length;
-        for (let i = 0; i < len; i++) {
-          const j = (i + 1) % len;
-          const ex = raw[j].x - raw[i].x;
-          const ey = raw[j].y - raw[i].y;
-          const elen = Math.hypot(ex, ey) || 1;
-          const nLocal: Vec3 = [ey / elen, -ex / elen, 0];
-          const nWorld = quatRotateVec(q, nLocal);
-          const avgZ = (fLoop[i].z + fLoop[j].z + bLoop[i].z + bLoop[j].z) * 0.25;
-          const light = nWorld[0] * keyLight[0] + nWorld[1] * keyLight[1] + nWorld[2] * keyLight[2];
-          quads.push({
-            pts: [fLoop[i], fLoop[j], bLoop[j], bLoop[i]],
-            avgZ,
-            light,
-            isInner,
-          });
+      const draw3DClaims = (behindOnly: boolean) => {
+        for (const m of claims) {
+          const pt = xform([m.x - 256, m.y - 246, 0]);
+          if (behindOnly ? pt.z >= 0 : pt.z < 0) continue;
+          const lifeFade = Math.min(1, (m.maxLife - m.life) / 0.55);
+          const a = Math.max(0, lifeFade) * 0.92;
+          if (a <= 0.04) continue;
+          const rad = Math.max(1.2, m.r * pt.s);
+          if (m.kind === 'verified') {
+            ctx.fillStyle = isLight ? `rgba(218, 128, 12, ${a * 0.28})` : `rgba(255, 206, 102, ${a * 0.30})`;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, rad * 2.0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle =
+            m.kind === 'verified'
+              ? isLight ? `rgba(196, 112, 8, ${a})` : `rgba(255, 206, 102, ${a})`
+              : m.state === 'deflected' || isNoise
+                ? isLight ? `rgba(186, 62, 54, ${a * 0.88})` : `rgba(232, 92, 84, ${a * 0.88})`
+                : isLight ? `rgba(42, 66, 112, ${a * 0.62})` : `rgba(148, 178, 228, ${a * 0.65})`;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, rad, 0, Math.PI * 2);
+          ctx.fill();
         }
       };
-      pushWalls(contours.outer, outerF, outerB, false);
-      pushWalls(contours.inner, innerF, innerB, true);
-      quads.sort((a, b) => a.avgZ - b.avgZ);
 
-      if (dropBehind) draw3DDrop();
+      const renderSolid3D = (
+        outerLoopRaw: Point2D[],
+        innerLoopRaw: Point2D[] | null,
+        offsetLocal: [number, number] = [0, 0],
+        rotLocalZ = 0,
+        pivotLocal: [number, number] = [0, 0]
+      ) => {
+        const transformPt = (p: Point2D): Point2D => {
+          if (rotLocalZ === 0 && offsetLocal[0] === 0 && offsetLocal[1] === 0) return p;
+          const dx = p.x - pivotLocal[0];
+          const dy = p.y - pivotLocal[1];
+          const c = Math.cos(rotLocalZ);
+          const s = Math.sin(rotLocalZ);
+          return {
+            x: pivotLocal[0] + dx * c - dy * s + offsetLocal[0],
+            y: pivotLocal[1] + dx * s + dy * c + offsetLocal[1],
+          };
+        };
+
+        const oRaw = outerLoopRaw.map(transformPt);
+        const iRaw = innerLoopRaw ? innerLoopRaw.map(transformPt) : null;
+        const outerF = oRaw.map((p) => xform([p.x, p.y, HALF_D]));
+        const outerB = oRaw.map((p) => xform([p.x, p.y, -HALF_D]));
+        const innerF = iRaw ? iRaw.map((p) => xform([p.x, p.y, HALF_D])) : null;
+        const innerB = iRaw ? iRaw.map((p) => xform([p.x, p.y, -HALF_D])) : null;
+
+        const nFront = quatRotateVec(q, [0, 0, 1]);
+        const frontIsNear = nFront[2] >= 0;
+        const nearOuter = frontIsNear ? outerF : outerB;
+        const nearInner = frontIsNear ? innerF : innerB;
+        const farOuter = frontIsNear ? outerB : outerF;
+        const farInner = frontIsNear ? innerB : innerF;
+
+        const traceFace = (oLoop: { x: number; y: number }[], iLoop: { x: number; y: number }[] | null) => {
+          ctx.beginPath();
+          oLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.closePath();
+          if (iLoop) {
+            iLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+            ctx.closePath();
+          }
+        };
+
+        const drawCap = (
+          oLoop: { x: number; y: number }[],
+          iLoop: { x: number; y: number }[] | null,
+          facingLight: number,
+          isFrontVisible: boolean
+        ) => {
+          ctx.save();
+          traceFace(oLoop, iLoop);
+          const lit = 0.55 + Math.max(0, facingLight) * 0.45;
+          const g = ctx.createLinearGradient(-150, -140, 150, 120);
+          if (isLight) {
+            if (isNoise) {
+              g.addColorStop(0, '#3a2c3c');
+              g.addColorStop(1, '#1a1524');
+            } else {
+              const b1 = Math.round(24 + lit * 26);
+              const b2 = Math.round(48 + lit * 44);
+              const b3 = Math.round(96 + lit * 56);
+              g.addColorStop(0, `rgb(${b1 + 14}, ${b2 + 22}, ${b3 + 22})`);
+              g.addColorStop(0.52, `rgb(${b1}, ${b2 - 12}, ${b3 - 18})`);
+              g.addColorStop(1, `rgb(${Math.max(10, b1 - 12)}, ${Math.max(20, b2 - 26)}, ${Math.max(40, b3 - 42)})`);
+            }
+          } else {
+            if (isNoise) {
+              g.addColorStop(0, '#b5a8a6');
+              g.addColorStop(1, '#8c7d7c');
+            } else {
+              const vHi = Math.min(255, Math.round(218 + lit * 37));
+              const vMid = Math.min(250, Math.round(196 + lit * 42));
+              const vLo = Math.round(158 + lit * 38);
+              g.addColorStop(0, `rgb(${vMid}, ${vMid - 5}, ${vMid - 14})`);
+              g.addColorStop(0.48, `rgb(${vHi}, ${vHi - 2}, ${vHi - 8})`);
+              g.addColorStop(1, `rgb(${vLo}, ${vLo - 6}, ${vLo - 14})`);
+            }
+          }
+          ctx.fillStyle = g;
+          ctx.fill('evenodd');
+
+          if (isFrontVisible) {
+            ctx.strokeStyle = isLight ? 'rgba(210, 228, 255, 0.36)' : 'rgba(255, 255, 255, 0.52)';
+            ctx.lineWidth = 1.1;
+            ctx.stroke();
+
+            if (iLoop) {
+              ctx.beginPath();
+              iLoop.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+              ctx.closePath();
+              ctx.strokeStyle = isSealed
+                ? isLight
+                  ? 'rgba(12, 134, 92, 0.92)'
+                  : 'rgba(60, 227, 168, 0.95)'
+                : isLight
+                  ? 'rgba(218, 140, 24, 0.9)'
+                  : 'rgba(252, 194, 86, 0.9)';
+              ctx.lineWidth = 2.0;
+              ctx.stroke();
+            }
+          }
+          ctx.restore();
+        };
+
+        interface SideQuad {
+          pts: { x: number; y: number }[];
+          avgZ: number;
+          light: number;
+          isInner: boolean;
+        }
+        const quads: SideQuad[] = [];
+        const pushWalls = (
+          raw: Point2D[],
+          fLoop: { x: number; y: number; z: number }[],
+          bLoop: { x: number; y: number; z: number }[],
+          isInner: boolean
+        ) => {
+          const len = raw.length;
+          for (let i = 0; i < len; i++) {
+            const j = (i + 1) % len;
+            const ex = raw[j].x - raw[i].x;
+            const ey = raw[j].y - raw[i].y;
+            const elen = Math.hypot(ex, ey) || 1;
+            const nLocal: Vec3 = [ey / elen, -ex / elen, 0];
+            const nWorld = quatRotateVec(q, nLocal);
+            const avgZ = (fLoop[i].z + fLoop[j].z + bLoop[i].z + bLoop[j].z) * 0.25;
+            const light = nWorld[0] * keyLight[0] + nWorld[1] * keyLight[1] + nWorld[2] * keyLight[2];
+            quads.push({
+              pts: [fLoop[i], fLoop[j], bLoop[j], bLoop[i]],
+              avgZ,
+              light,
+              isInner,
+            });
+          }
+        };
+        pushWalls(oRaw, outerF, outerB, false);
+        if (iRaw && innerF && innerB) pushWalls(iRaw, innerF, innerB, true);
+        quads.sort((a, b) => a.avgZ - b.avgZ);
+
+        const faceDot = Math.abs(nFront[0] * keyLight[0] + nFront[1] * keyLight[1] + nFront[2] * keyLight[2]);
+        drawCap(farOuter, farInner, faceDot * 0.5, false);
+
+        for (const qd of quads) {
+          const shade = Math.max(0, Math.min(1, 0.42 + qd.light * 0.58));
+          const r = Math.round((isNoise ? 76 : isLight ? 24 : 30) + shade * (isLight ? 48 : 66));
+          const g = Math.round((isNoise ? 38 : isLight ? 46 : 58) + shade * (isLight ? 78 : 104));
+          const b = Math.round((isNoise ? 46 : isLight ? 92 : 116) + shade * (isLight ? 115 : 132));
+          const col = qd.isInner && isSealed ? `rgb(18, ${Math.round(120 + shade * 80)}, ${Math.round(92 + shade * 60)})` : `rgb(${r},${g},${b})`;
+          ctx.fillStyle = col;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 0.85;
+          ctx.beginPath();
+          ctx.moveTo(qd.pts[0].x, qd.pts[0].y);
+          ctx.lineTo(qd.pts[1].x, qd.pts[1].y);
+          ctx.lineTo(qd.pts[2].x, qd.pts[2].y);
+          ctx.lineTo(qd.pts[3].x, qd.pts[3].y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        drawCap(nearOuter, nearInner, faceDot, true);
+      };
+
+      draw3DClaims(true);
+      if (dropBehind) draw3DDropAndRings();
 
       // Grounding subtle studio shadow in Light Theme
       if (isLight) {
         ctx.save();
         const sh = ctx.createRadialGradient(0, 175, 4, 0, 175, 120);
-        sh.addColorStop(0, 'rgba(18, 32, 63, 0.14)');
+        sh.addColorStop(0, 'rgba(18, 32, 63, 0.13)');
         sh.addColorStop(1, 'rgba(18, 32, 63, 0)');
         ctx.fillStyle = sh;
         ctx.beginPath();
@@ -638,32 +998,17 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         ctx.restore();
       }
 
-      // Draw far cap, depth-sorted metallic side walls, then near cap!
-      const faceDot = Math.abs(nFront[0] * keyLight[0] + nFront[1] * keyLight[1] + nFront[2] * keyLight[2]);
-      drawCap(farOuter, farInner, faceDot * 0.5, false);
-
-      for (const qd of quads) {
-        const shade = Math.max(0, Math.min(1, 0.42 + qd.light * 0.58));
-        const r = Math.round((isLight ? 24 : 30) + shade * (isLight ? 48 : 66));
-        const g = Math.round((isLight ? 46 : 58) + shade * (isLight ? 78 : 104));
-        const b = Math.round((isLight ? 92 : 116) + shade * (isLight ? 115 : 132));
-        const col = qd.isInner && isSealed ? `rgb(18, ${Math.round(120 + shade * 80)}, ${Math.round(92 + shade * 60)})` : `rgb(${r},${g},${b})`;
-        ctx.fillStyle = col;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 0.85;
-        ctx.beginPath();
-        ctx.moveTo(qd.pts[0].x, qd.pts[0].y);
-        ctx.lineTo(qd.pts[1].x, qd.pts[1].y);
-        ctx.lineTo(qd.pts[2].x, qd.pts[2].y);
-        ctx.lineTo(qd.pts[3].x, qd.pts[3].y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+      if (splitBlend > 0.02) {
+        const es = splitBlend * splitBlend * (3 - 2 * splitBlend);
+        renderSolid3D(splitContours.bar, null, [0, -22 * es], 0);
+        renderSolid3D(splitContours.left, null, [-18 * es, 7 * es], -0.075 * es, [-58, -6]);
+        renderSolid3D(splitContours.right, null, [18 * es, 7 * es], 0.075 * es, [58, -6]);
+      } else {
+        renderSolid3D(contours.outer, contours.inner);
       }
 
-      drawCap(nearOuter, nearInner, faceDot, true);
-
-      if (!dropBehind) draw3DDrop();
+      if (!dropBehind) draw3DDropAndRings();
+      draw3DClaims(false);
     };
 
     const drawSculptedBody = (
@@ -759,9 +1104,11 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       ctx.restore();
     };
 
+    let orbitGuide = forceOrbitPreview || forceFlipPreview ? 1 : 0;
+
     const drawFrame = (now: number) => {
       rafId = requestAnimationFrame(drawFrame);
-      const dt = Math.min((now - lastTs) / 1000, 0.05);
+      const dt = Math.min(Math.max(0, (now - lastTs) / 1000), 0.05);
       lastTs = now;
       elapsed += dt;
 
@@ -777,26 +1124,30 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       if (resetQuatRef.current) {
         resetQuatRef.current = false;
         userQuat = QUAT_IDENTITY;
+        cruiseAxis = [...DEFAULT_CRUISE_AXIS];
         gesture.velX = 0;
         gesture.velY = 0;
         gesture.velZ = 0;
+        gesture.extraSpeed = 0;
+        gesture.cruiseSpeed = DEFAULT_CRUISE_SPEED;
+        gesture.customSpin = false;
         gesture.resetting = false;
-        gesture.stillTimer = 0;
+        gesture.hudTimer = 0;
+        customSpinCbRef.current?.(false);
       }
 
-      // Press-and-Hold Gravitational Charge Progression (0 -> 1 over ~1.05s) + Full 360° X/Y/Z Inertia & Home Slerp
+      // Press-and-Hold Gravitational Charge Progression (0 -> 1 over ~1.05s) + Continuous Smooth 3D Whole-Logo Auto-Rotate
       const rotAngleFromHome = quatAngleToIdentity(userQuat);
-      const speedMag = Math.hypot(gesture.velX, gesture.velY, gesture.velZ);
+      const wantBrake = pointer.inside && gesture.mode === 'idle' && !gesture.customSpin ? 0.58 : 1.0;
+      gesture.hoverBrake += (wantBrake - gesture.hoverBrake) * (1 - Math.exp(-dt * 5.0));
 
       if (gesture.mode === 'charge' && !gesture.chargeTriggered) {
         if (!forceChargePreview) {
           gesture.charge = Math.min(1, gesture.charge + dt * 0.96);
         }
-        // Subtle ascending glass pulse ticks while charging
         if (gesture.charge > 0.12 && now - gesture.lastChargeTick > 135) {
           gesture.lastChargeTick = now;
           soundEngine.playChargeTick(gesture.charge);
-          // Pull fresh golden claim motes gently toward the funnel mouth during charge!
           spawnClaim(256 + (Math.random() - 0.5) * 160, 62, 'verified');
         }
         if (gesture.charge >= 1.0 && !forceChargePreview) {
@@ -811,35 +1162,29 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
           gesture.charge = Math.max(0, gesture.charge - dt * 3.8);
         }
         if (gesture.mode === 'idle' && !forceOrbitPreview && !forceFlipPreview) {
-          if (speedMag > 0.015) {
-            const qY = quatFromAxisAngle([0, 1, 0], gesture.velY * dt);
-            const qX = quatFromAxisAngle([1, 0, 0], gesture.velX * dt);
-            let nextQ = quatMultiply(qX, quatMultiply(qY, userQuat));
-            if (Math.abs(gesture.velZ) > 0.005) {
-              nextQ = quatMultiply(quatFromAxisAngle([0, 0, 1], gesture.velZ * dt), nextQ);
+          if (gesture.resetting) {
+            userQuat = quatSlerp(userQuat, QUAT_IDENTITY, 1 - Math.exp(-dt * 7.5));
+            if (quatAngleToIdentity(userQuat) < 0.012) {
+              userQuat = QUAT_IDENTITY;
+              gesture.resetting = false;
             }
-            userQuat = quatNormalize(nextQ);
-            const friction = Math.exp(-dt * 2.8);
-            gesture.velX *= friction;
-            gesture.velY *= friction;
-            gesture.velZ *= friction;
-            gesture.stillTimer = 0;
-          } else if (rotAngleFromHome > 0.018) {
-            gesture.velX = 0;
-            gesture.velY = 0;
-            gesture.velZ = 0;
-            if (!pointer.inside || gesture.resetting) {
-              gesture.stillTimer += dt;
+          } else if (entranceRef.current > 0.25) {
+            const ramp = Math.min(1, (entranceRef.current - 0.25) / 0.45);
+            const smoothRamp = ramp * ramp * (3 - 2 * ramp);
+            const motionScale = prefersReducedMotion ? 0.35 : 1.0;
+            const activeSpeed = (gesture.cruiseSpeed * gesture.hoverBrake * motionScale + gesture.extraSpeed) * smoothRamp;
+            if (activeSpeed > 0.002) {
+              userQuat = quatNormalize(quatMultiply(quatFromAxisAngle(cruiseAxis, activeSpeed * dt), userQuat));
             }
-            if (gesture.resetting || gesture.stillTimer > 2.4) {
-              userQuat = quatSlerp(userQuat, QUAT_IDENTITY, 1 - Math.exp(-dt * (gesture.resetting ? 7.5 : 3.2)));
-              if (quatAngleToIdentity(userQuat) < 0.01) {
-                userQuat = QUAT_IDENTITY;
-                gesture.resetting = false;
-                gesture.stillTimer = 0;
-              }
+            if (gesture.extraSpeed > 0.004) {
+              gesture.extraSpeed *= Math.exp(-dt * 2.4);
+            } else {
+              gesture.extraSpeed = 0;
             }
           }
+        }
+        if (gesture.hudTimer > 0 && gesture.mode === 'idle') {
+          gesture.hudTimer = Math.max(0, gesture.hudTimer - dt);
         }
       }
       gesture.superHalo = Math.max(0, gesture.superHalo - dt * 0.65);
@@ -865,9 +1210,16 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         condenseRef.current = 0;
       }
 
+      if (!initialStreamSeeded && ent >= 0.66) {
+        initialStreamSeeded = true;
+        for (let i = 0; i < 7; i++) {
+          spawnClaim(undefined, 76 + Math.random() * 140, i < 4 ? 'verified' : 'noise');
+        }
+      }
+
       if (curMode === 'sift' && ent >= 0.99 && condenseRef.current >= 1 && gesture.mode === 'idle') {
         autoPulseTimer += dt;
-        if (autoPulseTimer > 5.8) {
+        if (autoPulseTimer > 2.6) {
           autoPulseTimer = 0;
           condenseSuperRef.current = false;
           condenseRef.current = 0;
@@ -875,18 +1227,18 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         }
       }
 
-      if (condenseRef.current < 1 && !search.includes('midforge=1')) {
-        condenseRef.current = Math.min(1, condenseRef.current + dt * 1.18);
+      if (condenseRef.current < 1 && !search.includes('midforge=1') && !forceCondensePreview) {
+        condenseRef.current = Math.min(1, condenseRef.current + dt * 0.85);
       }
       const cT = condenseRef.current;
-      if (cT >= 0.58 && cT < 0.95 && !prevCondenseImpact) {
+      if (cT >= 0.62 && cT < 0.95 && !prevCondenseImpact) {
         prevCondenseImpact = true;
         const isSuper = condenseSuperRef.current;
-        dropVelRef.current += isSuper ? 4.1 : 2.6;
-        ripples.push({ age: 0, maxAge: isSuper ? 1.35 : 1.12, maxRadius: isSuper ? 148 : 114, strong: true, emerald: isSuper });
-        ripples.push({ age: -0.13, maxAge: 1.05, maxRadius: isSuper ? 102 : 78, strong: false });
+        dropVelRef.current += isSuper ? 4.2 : 2.8;
+        ripples.push({ age: 0, maxAge: isSuper ? 1.32 : 1.14, maxRadius: isSuper ? 90 : 72, strong: true, emerald: isSuper });
+        ripples.push({ age: -0.16, maxAge: 1.08, maxRadius: isSuper ? 66 : 52, strong: false });
       }
-      if (cT < 0.4) prevCondenseImpact = false;
+      if (cT < 0.42) prevCondenseImpact = false;
 
       // Spring-damper squash/stretch on Saffron Drop
       const accel = -140 * dropSquashRef.current - 12 * dropVelRef.current;
@@ -910,8 +1262,8 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       dropMagY += (targetMagY - dropMagY) * (1 - Math.exp(-dt * 8));
 
       // Calm ambient claim spawner
-      if (ent > 0.82 && curMode !== 'sealed') {
-        spawnAccum += dt * (curMode === 'noise' ? 6.5 : 4.2);
+      if (ent > 0.72 && curMode !== 'sealed') {
+        spawnAccum += dt * (curMode === 'noise' ? 7.0 : 5.4);
         while (spawnAccum >= 1) {
           spawnAccum -= 1;
           spawnClaim(undefined, undefined, curMode === 'noise' ? (Math.random() < 0.8 ? 'noise' : 'verified') : undefined);
@@ -1009,7 +1361,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         if (glints[i].age > 0.28) glints.splice(i, 1);
       }
       for (let i = ripples.length - 1; i >= 0; i--) {
-        ripples[i].age += dt;
+        if (!forceCondensePreview) ripples[i].age += dt;
         if (ripples[i].age > ripples[i].maxAge) ripples.splice(i, 1);
       }
 
@@ -1019,7 +1371,9 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
 
       const unit = Math.min(cw, chH) / 512;
       const floatY = Math.sin(elapsed * 0.95) * 3.4;
-      const useFull3D = rotAngleFromHome > 0.045 || forceOrbitPreview || forceFlipPreview;
+      const useFull3D = ent >= 0.35 || rotAngleFromHome > 0.012 || forceOrbitPreview || forceFlipPreview;
+      const targetGuide = gesture.mode === 'orbit' || forceOrbitPreview || forceFlipPreview ? 1 : 0;
+      orbitGuide += (targetGuide - orbitGuide) * (1 - Math.exp(-dt * 9));
       const totalYaw = pointer.x * 0.14;
       const totalPitch = pointer.y * 0.08;
       const sheenShift = Math.sin(elapsed * 0.55) * 60 + totalYaw * 165;
@@ -1027,24 +1381,35 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
 
       ctx.save();
       ctx.translate(cw / 2, chH / 2);
-      ctx.scale(unit * 1.04 * chargeScale, unit * 1.04 * chargeScale);
+      ctx.scale(unit * 0.96 * chargeScale, unit * 0.96 * chargeScale);
 
       if (useFull3D) {
+        // Layer a whisper-gentle sculptural breathing pitch tilt on top of userQuat
+        const breatheWeight = gesture.customSpin ? 0.16 : 0.45;
+        const breatheQ = quatNormalize(
+          quatMultiply(
+            quatFromAxisAngle([1, 0, 0], (-pointer.y * 0.07 + Math.sin(elapsed * 0.42) * 0.10) * breatheWeight),
+            quatFromAxisAngle([0, 1, 0], pointer.x * 0.10 * (gesture.customSpin ? 0.25 : 0.5))
+          )
+        );
+        const renderQ = quatNormalize(quatMultiply(userQuat, breatheQ));
         drawExtruded3D(
-          userQuat,
+          renderQ,
           isLight,
-          sealedBlend > 0.5 || gesture.superHalo > 0.25,
-          noiseBlend > 0.5,
+          Math.max(sealedBlend, gesture.superHalo),
+          noiseBlend,
           floatY,
           dropAppear,
-          ch
+          ch,
+          orbitGuide,
+          gesture.zRoll
         );
       } else {
         // Subtle idle cursor parallax when resting upright
         const cosYaw = Math.cos(totalYaw * 0.92);
         const skewY = Math.sin(totalYaw) * 0.075;
         ctx.transform(cosYaw, skewY, 0, 1 - Math.abs(totalPitch) * 0.1, 0, 0);
-        ctx.translate(-256 + totalYaw * 14, -248 + floatY + totalPitch * 14);
+        ctx.translate(-256 + totalYaw * 14, -244 + floatY + totalPitch * 14);
 
         const dropX = 256 + dropMagX + gesture.pullX + totalYaw * 16;
         const dropY = 374.16 + dropMagY + gesture.pullY + Math.sin(elapsed * 1.65) * 2.3;
@@ -1052,13 +1417,13 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       // 1 · Grounding Contact Shadow (Light) / Quiet Focused Aura (Dark)
       if (dropAppear > 0.04) {
         if (isLight) {
-          const sh = ctx.createRadialGradient(dropX, 416, 2, dropX, 416, 48 + ch * 14);
+          const sh = ctx.createRadialGradient(dropX, 418, 2, dropX, 418, 48 + ch * 14);
           sh.addColorStop(0, `rgba(18, 32, 63, ${(0.15 + ch * 0.07) * dropAppear})`);
           sh.addColorStop(0.55, `rgba(18, 32, 63, ${0.045 * dropAppear})`);
           sh.addColorStop(1, 'rgba(18, 32, 63, 0)');
           ctx.fillStyle = sh;
           ctx.beginPath();
-          ctx.ellipse(dropX, 416, 48 + ch * 14, 10, 0, 0, Math.PI * 2);
+          ctx.ellipse(dropX, 418, 48 + ch * 14, 10, 0, 0, Math.PI * 2);
           ctx.fill();
         } else {
           const auraCol =
@@ -1067,10 +1432,10 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
               : noiseBlend > 0.5
                 ? '204,76,72'
                 : '242,163,58';
-          const auraR = 76 + ch * 34 + Math.abs(dropSquashRef.current) * 35;
+          const auraR = 78 + ch * 34 + Math.abs(dropSquashRef.current) * 35;
           const aura = ctx.createRadialGradient(dropX, dropY, 4, dropX, dropY, auraR);
-          aura.addColorStop(0, `rgba(${auraCol}, ${(0.38 + ch * 0.28) * dropAppear})`);
-          aura.addColorStop(0.5, `rgba(${auraCol}, ${(0.12 + ch * 0.1) * dropAppear})`);
+          aura.addColorStop(0, `rgba(${auraCol}, ${(0.40 + ch * 0.28) * dropAppear})`);
+          aura.addColorStop(0.5, `rgba(${auraCol}, ${(0.14 + ch * 0.1) * dropAppear})`);
           aura.addColorStop(1, `rgba(${auraCol}, 0)`);
           ctx.fillStyle = aura;
           ctx.beginPath();
@@ -1079,52 +1444,65 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         }
       }
 
-      // 2 · Clean Concentric Water-Surface Ripples
+      // 2 · Crisp Concentric Circular Impact Ripples (Unclipped & Vivid on 1× DPR Full HD!)
       for (const rp of ripples) {
         if (rp.age < 0) continue;
         const p = rp.age / rp.maxAge;
-        const easeP = 1 - Math.pow(1 - p, 2.6);
+        const easeP = 1 - Math.pow(1 - p, 2.5);
         const rad = 22 + easeP * rp.maxRadius;
-        const op = (1 - p) * (rp.strong ? (isLight ? 0.62 : 0.78) : isLight ? 0.34 : 0.44);
+        const op = (1 - p) * (rp.strong ? (isLight ? 0.78 : 0.90) : isLight ? 0.46 : 0.58);
         const rCol =
           sealedBlend > 0.5 || rp.emerald
             ? isLight
               ? '12,126,88'
               : '60,227,168'
             : isLight
-              ? '188,108,8'
-              : '248,186,78';
+              ? '184,104,8'
+              : '255,204,98';
         ctx.save();
         ctx.strokeStyle = `rgba(${rCol}, ${op})`;
-        ctx.lineWidth = (rp.strong ? 1.9 : 1.1) * (1 - p * 0.45);
+        ctx.lineWidth = (rp.strong ? 2.4 : 1.5) * (1 - p * 0.35);
         ctx.beginPath();
-        ctx.ellipse(dropX, dropY + 4, rad, rad * 0.32, 0, 0, Math.PI * 2);
+        ctx.ellipse(dropX, dropY + 2, rad, rad * 0.86, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
 
-      // 3 · Calm Intentional Claim Motes
+      // 3 · Crisp Intentional Claim Droplets (Soft Glow Halo + Elongated Golden Liquid Trail)
       for (const m of claims) {
-        const entryFade = Math.min(1, (m.y - 46) / 36);
+        const entryFade = Math.min(1, (m.y - 44) / 34);
         const lifeFade = Math.min(1, (m.maxLife - m.life) / 0.55);
-        const a = Math.max(0, entryFade * lifeFade) * (m.state === 'deflected' ? 0.75 : 0.92);
+        const a = Math.max(0, entryFade * lifeFade) * (m.state === 'deflected' ? 0.84 : 0.96);
         if (a <= 0.03) continue;
         ctx.save();
         if (m.kind === 'verified') {
-          ctx.fillStyle = isLight ? `rgba(196, 112, 8, ${a})` : `rgba(252, 194, 86, ${a})`;
+          // Soft luminous outer halo for crisp 1× DPR Full HD legibility
+          ctx.fillStyle = isLight ? `rgba(214, 126, 12, ${a * 0.24})` : `rgba(255, 206, 102, ${a * 0.28})`;
           ctx.beginPath();
-          ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+          ctx.arc(m.x, m.y, m.r * 2.05, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = isLight ? `rgba(196, 112, 8, ${a * 0.34})` : `rgba(255, 224, 140, ${a * 0.4})`;
-          ctx.lineWidth = m.r * 0.75;
+
+          // Elongated falling liquid trail
+          ctx.strokeStyle = isLight ? `rgba(196, 112, 8, ${a * 0.52})` : `rgba(255, 224, 140, ${a * 0.62})`;
+          ctx.lineWidth = m.r * 0.85;
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(m.x, m.y);
-          ctx.lineTo(m.x - m.vx * (0.09 + ch * 0.08), m.y - m.vy * (0.09 + ch * 0.08));
+          ctx.lineTo(m.x - m.vx * (0.13 + ch * 0.08), m.y - m.vy * (0.13 + ch * 0.08));
           ctx.stroke();
+
+          // Primary golden droplet core + specular glint
+          ctx.fillStyle = isLight ? `rgba(196, 112, 8, ${a})` : `rgba(255, 206, 102, ${a})`;
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255, 252, 234, ${a * 0.85})`;
+          ctx.beginPath();
+          ctx.arc(m.x - m.r * 0.28, m.y - m.r * 0.28, m.r * 0.34, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          const deflectedCol = isLight ? `rgba(186, 62, 54, ${a * 0.85})` : `rgba(232, 92, 84, ${a * 0.82})`;
-          const rawCol = isLight ? `rgba(42, 66, 112, ${a * 0.52})` : `rgba(148, 178, 228, ${a * 0.55})`;
+          const deflectedCol = isLight ? `rgba(186, 62, 54, ${a * 0.90})` : `rgba(236, 98, 90, ${a * 0.90})`;
+          const rawCol = isLight ? `rgba(42, 66, 112, ${a * 0.66})` : `rgba(158, 188, 238, ${a * 0.72})`;
           ctx.fillStyle = m.state === 'deflected' || noiseBlend > 0.5 ? deflectedCol : rawCol;
           ctx.beginPath();
           ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
@@ -1230,11 +1608,11 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       }
 
       // 7 · Signature Liquid-Gold Teardrop Condensation Across the Exact 0.6S Gap (or Charging Meniscus!)
-      if (ch > 0.14 && noiseBlend < 0.4 && cT >= 0.62) {
+      if (ch > 0.14 && noiseBlend < 0.4 && cT >= 0.66) {
         // Swelling charged golden meniscus hanging from V-apex tip while holding!
         const tipY = 330.5;
-        const bulbY = tipY + 4 + ch * 17;
-        const bulbR = 2.6 + ch * 6.8;
+        const bulbY = tipY + 5 + ch * 17;
+        const bulbR = 3.2 + ch * 7.2;
         const g = ctx.createRadialGradient(256 - 1.5, bulbY - 1.5, 0.5, 256, bulbY, bulbR);
         g.addColorStop(0, '#fffce8');
         g.addColorStop(0.55, '#ffc957');
@@ -1247,40 +1625,49 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         ctx.quadraticCurveTo(256 + bulbR * 0.25, (tipY + bulbY) * 0.52, 256 + bulbR * 0.72, tipY);
         ctx.closePath();
         ctx.fill();
-      } else if (cT < 0.62 && noiseBlend < 0.4) {
+      } else if (cT < 0.66 && noiseBlend < 0.4) {
         ctx.save();
         const sc = condenseSuperRef.current ? 1.22 : 1.0;
-        if (cT < 0.36) {
-          const p = cT / 0.36;
+        if (cT < 0.40) {
+          const p = cT / 0.40;
           const ease = 1 - Math.pow(1 - p, 2);
           const tipY = 330.5;
-          const bulbY = tipY + 4 + ease * 20;
-          const bulbR = (2.5 + ease * 6.5) * sc;
-          const g = ctx.createRadialGradient(256 - 1.5, bulbY - 1.5, 0.5, 256, bulbY, bulbR);
-          g.addColorStop(0, '#fff9e2');
-          g.addColorStop(0.55, '#f2a33a');
-          g.addColorStop(1, isLight ? '#c26906' : '#d6780e');
+          const bulbY = tipY + 4 + ease * 21;
+          const bulbR = (3.4 + ease * 7.4) * sc;
+          const g = ctx.createRadialGradient(256 - 1.6, bulbY - 1.6, 0.6, 256, bulbY, bulbR);
+          g.addColorStop(0, '#fffce8');
+          g.addColorStop(0.5, '#ffca5a');
+          g.addColorStop(1, isLight ? '#bd6406' : '#d6780e');
           ctx.fillStyle = g;
           ctx.beginPath();
           ctx.moveTo(256 - bulbR * 0.68, tipY);
-          ctx.quadraticCurveTo(256 - bulbR * 0.25, (tipY + bulbY) * 0.52, 256 - bulbR, bulbY);
+          ctx.quadraticCurveTo(256 - bulbR * 0.24, (tipY + bulbY) * 0.52, 256 - bulbR, bulbY);
           ctx.arc(256, bulbY, bulbR, Math.PI, 0, true);
-          ctx.quadraticCurveTo(256 + bulbR * 0.25, (tipY + bulbY) * 0.52, 256 + bulbR * 0.68, tipY);
+          ctx.quadraticCurveTo(256 + bulbR * 0.24, (tipY + bulbY) * 0.52, 256 + bulbR * 0.68, tipY);
           ctx.closePath();
           ctx.fill();
         } else {
-          const p = (cT - 0.36) / 0.26;
+          const p = (cT - 0.40) / 0.26;
           const accelP = p * p;
-          const py = 354.5 + accelP * (dropY - 354.5);
+          const py = 355.5 + accelP * (dropY - 355.5);
           const px = 256 + accelP * (dropX - 256);
-          const pr = 7.4 * sc * (1 - p * 0.12);
+          const pr = 8.4 * sc * (1 - p * 0.10);
+          // Crisp falling teardrop with luminous outer halo and liquid tip
+          ctx.fillStyle = isLight ? 'rgba(218, 128, 12, 0.24)' : 'rgba(255, 206, 102, 0.30)';
+          ctx.beginPath();
+          ctx.arc(px, py, pr * 1.65, 0, Math.PI * 2);
+          ctx.fill();
           const g = ctx.createRadialGradient(px - 1.8, py - 1.8, 0.5, px, py, pr);
-          g.addColorStop(0, '#fffbe8');
+          g.addColorStop(0, '#fffce8');
           g.addColorStop(0.5, '#ffc857');
-          g.addColorStop(1, '#e28816');
+          g.addColorStop(1, '#d97c10');
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.ellipse(px, py, pr * 0.88, pr * 1.18, 0, 0, Math.PI * 2);
+          ctx.moveTo(px, py - pr * 1.65);
+          ctx.quadraticCurveTo(px + pr * 0.95, py - pr * 0.2, px + pr * 0.88, py + pr * 0.15);
+          ctx.arc(px, py + pr * 0.15, pr * 0.88, 0, Math.PI, false);
+          ctx.quadraticCurveTo(px - pr * 0.95, py - pr * 0.2, px, py - pr * 1.65);
+          ctx.closePath();
           ctx.fill();
         }
         ctx.restore();
@@ -1288,18 +1675,18 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
 
       // 8 · Press-and-Hold Precision Radial Charge Ring (Appears ONLY While Holding — Zero Static Clutter!)
       if (ch > 0.04 && dropAppear > 0.3) {
-        const ringR = 35.5;
+        const ringR = 34.5;
         ctx.save();
         ctx.translate(dropX, dropY);
         const col = isLight ? '184, 108, 8' : '248, 190, 82';
-        ctx.strokeStyle = `rgba(${col}, ${0.22 * Math.min(1, ch * 3)})`;
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(${col}, ${0.26 * Math.min(1, ch * 3)})`;
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.arc(0, 0, ringR, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.strokeStyle = `rgba(${col}, ${0.95})`;
-        ctx.lineWidth = 2.4;
+        ctx.strokeStyle = `rgba(${col}, 0.96)`;
+        ctx.lineWidth = 2.6;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.arc(0, 0, ringR, -Math.PI / 2, -Math.PI / 2 + ch * Math.PI * 2);
@@ -1309,43 +1696,58 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
         const headA = -Math.PI / 2 + ch * Math.PI * 2;
         ctx.fillStyle = isLight ? '#b86c08' : '#fff5d6';
         ctx.beginPath();
-        ctx.arc(Math.cos(headA) * ringR, Math.sin(headA) * ringR, 2.8, 0, Math.PI * 2);
+        ctx.arc(Math.cos(headA) * ringR, Math.sin(headA) * ringR, 3.0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
 
-      // 9 · Sealed Mode (or Super-Distillation Seal Flash): ONE Serene Swiss-Chronometer Emerald Ring
+      // 9 · Perpetual Precision Circular Ring Around Bottom Bubble (Calibrated for 1× DPR Full HD -> 2× Retina!)
       const emeraldRingVis = Math.max(sealedBlend, gesture.superHalo);
-      if (emeraldRingVis > 0.04 && dropAppear > 0.3) {
-        const sb = emeraldRingVis * dropAppear;
-        const sealR = 35.5;
+      if (dropAppear > 0.06) {
+        const impactBreath = Math.min(4.2, Math.abs(dropSquashRef.current) * 14);
+        const ringR = 34.5 + impactBreath + ch * 1.8;
+        const isSealedState = emeraldRingVis > 0.35;
+        const isNoiseState = noiseBlend > 0.45;
+        const ringCol = isSealedState
+          ? isLight ? '12, 134, 92' : '60, 227, 168'
+          : isNoiseState
+            ? isLight ? '184, 50, 44' : '224, 88, 82'
+            : isLight ? '184, 108, 8' : '248, 190, 82';
         ctx.save();
         ctx.translate(dropX, dropY);
-        const emerald = isLight ? '12, 134, 92' : '60, 227, 168';
-        ctx.strokeStyle = `rgba(${emerald}, ${0.28 * sb})`;
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.arc(0, 0, sealR, 0, Math.PI * 2);
-        ctx.stroke();
 
-        ctx.rotate(elapsed * 0.48);
-        ctx.strokeStyle = `rgba(${emerald}, ${0.92 * sb})`;
-        ctx.lineWidth = 1.65;
-        ctx.lineCap = 'round';
+        // Continuous precision orbital ring
+        ctx.strokeStyle = `rgba(${ringCol}, ${(isSealedState ? 0.50 : isNoiseState ? 0.58 : isLight ? 0.44 : 0.46) * dropAppear})`;
+        ctx.lineWidth = isSealedState ? 1.75 : 1.55;
+        if (isNoiseState) ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        ctx.arc(0, 0, sealR, -0.55, 0.55);
+        ctx.arc(0, 0, ringR, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, 0, sealR, Math.PI - 0.55, Math.PI + 0.55);
-        ctx.stroke();
+        ctx.setLineDash([]);
 
-        ctx.lineWidth = 1.25;
-        for (let k = 0; k < 4; k++) {
-          const a = (k * Math.PI) / 2;
+        if (!isNoiseState) {
+          // Two precision caliper arcs anchored cleanly without competing spin
+          ctx.strokeStyle = `rgba(${ringCol}, ${(isSealedState ? 0.98 : 0.94) * dropAppear})`;
+          ctx.lineWidth = isSealedState ? 2.8 : 2.45;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.moveTo(Math.cos(a) * (sealR - 3.2), Math.sin(a) * (sealR - 3.2));
-          ctx.lineTo(Math.cos(a) * (sealR + 3.2), Math.sin(a) * (sealR + 3.2));
+          ctx.arc(0, 0, ringR, -0.58, 0.58);
           ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, 0, ringR, Math.PI - 0.58, Math.PI + 0.58);
+          ctx.stroke();
+
+          // 4 cardinal vernier ticks (delicate gold in Sift, crisp emerald chronometer ticks in Sealed)
+          const tickHalf = isSealedState ? 4.2 : 2.6;
+          ctx.strokeStyle = `rgba(${ringCol}, ${(isSealedState ? 0.94 : 0.62) * dropAppear})`;
+          ctx.lineWidth = isSealedState ? 1.75 : 1.35;
+          for (let k = 0; k < 4; k++) {
+            const a = (k * Math.PI) / 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * (ringR - tickHalf), Math.sin(a) * (ringR - tickHalf));
+            ctx.lineTo(Math.cos(a) * (ringR + tickHalf), Math.sin(a) * (ringR + tickHalf));
+            ctx.stroke();
+          }
         }
         ctx.restore();
       }
@@ -1413,34 +1815,35 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       }
       } // end !useFull3D
 
-      // 11 · Whisper-Clean Live Interaction Telemetry (Bottom-Left Slot — Zero Collision With Bottom-Right Replay!)
+      // 11 · Whisper-Clean Live Interaction Telemetry (Top-Center Slot — Zero Collision With Bottom-Right Reset/Replay!)
       ctx.restore();
-      if (ch > 0.08 || gesture.mode === 'orbit' || gesture.mode === 'pull-drop' || useFull3D) {
+      const showOrbitHud = gesture.mode === 'orbit' || gesture.hudTimer > 0.02 || forceOrbitPreview || forceFlipPreview;
+      if (ch > 0.08 || showOrbitHud || gesture.mode === 'pull-drop') {
         const cssW = canvas.clientWidth || 500;
         const dprNow = cw / Math.max(1, cssW);
         const compact = cssW < 390;
         ctx.save();
-        ctx.font = `600 ${Math.round(10.5 * dprNow)}px "JetBrains Mono", monospace`;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        ctx.fillStyle = isLight ? 'rgba(18, 32, 63, 0.78)' : 'rgba(247, 210, 138, 0.88)';
+        ctx.font = `600 ${Math.round(10.2 * dprNow)}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = isLight ? 'rgba(18, 32, 63, 0.82)' : 'rgba(247, 210, 138, 0.92)';
         let hud = '';
         if (ch > 0.08) {
           hud = `DISTILLING TRUTH · ${Math.round(ch * 100)}%`;
-        } else if (gesture.mode === 'orbit' || useFull3D) {
+        } else if (showOrbitHud) {
           const deg = quatToEulerDeg(userQuat);
           const fmt = (n: number) => `${n >= 0 ? '+' : ''}${n}°`;
           if (gesture.mode === 'orbit' && gesture.zRoll) {
-            hud = compact ? `Z-ROLL · Z ${fmt(deg.z)}` : `Z-ROLL · Z ${fmt(deg.z)} · DBL-CLICK`;
+            hud = compact ? `Z-ROLL · Z ${fmt(deg.z)}` : `Z-ROLL · Z ${fmt(deg.z)} · DBL-CLICK RESET`;
           } else {
             hud = compact
-              ? `360° · X ${fmt(deg.x)} Y ${fmt(deg.y)} Z ${fmt(deg.z)}`
-              : `360° · X ${fmt(deg.x)}  Y ${fmt(deg.y)}  Z ${fmt(deg.z)} · DBL-CLICK`;
+              ? `AXIS · X ${fmt(deg.x)} Y ${fmt(deg.y)} Z ${fmt(deg.z)}`
+              : `AXIS LOCKED · X ${fmt(deg.x)}  Y ${fmt(deg.y)}  Z ${fmt(deg.z)} · DBL-CLICK`;
           }
         } else if (gesture.mode === 'pull-drop') {
           hud = 'RELEASE TO CONDENSE';
         }
-        if (hud) ctx.fillText(hud, 8 * dprNow, chH - 10 * dprNow);
+        if (hud) ctx.fillText(hud, cw * 0.5, Math.round(chH * 0.024));
         ctx.restore();
       }
     };

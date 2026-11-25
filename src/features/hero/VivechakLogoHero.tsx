@@ -230,8 +230,9 @@ const RIPPLE_FRAG = `
   varying vec2 vUv;
   void main() {
     float r = length(vUv - 0.5) * 2.0;
-    float ring = smoothstep(0.045, 0.0, abs(r - 0.86));
-    float alpha = ring * uOpacity * mix(0.85, 0.68, uLightMode);
+    float core = smoothstep(0.036, 0.0, abs(r - 0.86));
+    float halo = smoothstep(0.095, 0.0, abs(r - 0.86)) * 0.22;
+    float alpha = (core + halo) * uOpacity * mix(0.95, 0.86, uLightMode);
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(uColor, alpha);
   }
@@ -267,6 +268,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
   const [hudLabel, setHudLabel] = useState<string>('');
   const [hoveredStage, setHoveredStage] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasCustomSpin, setHasCustomSpin] = useState(false);
 
   const modeRef = useRef<SieveMode>(mode);
   const themeRef = useRef<ThemeMode>(theme);
@@ -319,7 +321,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
-    camera.position.set(0, 0.1, 10.6);
+    camera.position.set(0, -0.02, 11.25);
 
     const studioEnv = buildStudioEnvMap(renderer);
     scene.environment = studioEnv.texture;
@@ -431,19 +433,25 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     rightPivot.add(new THREE.Mesh(rightGeom, [faceMat, sideMat]));
     splitGroup.add(rightPivot);
 
-    // Liquid-Gold Teardrop Condensation Mesh (stretches across the 0.6S gap on entrance & click!)
-    const pearlGeom = new THREE.SphereGeometry(0.11, 28, 28);
+    // Liquid-Gold Teardrop Condensation Mesh + Tapered Meniscus Neck across the exact 0.6S gap
+    const pearlGeom = new THREE.SphereGeometry(0.145, 28, 28);
     const pearlMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf7b142,
-      emissive: 0xc96c06,
-      emissiveIntensity: 0.45,
-      metalness: 0.25,
+      color: 0xffc65c,
+      emissive: 0xe6840e,
+      emissiveIntensity: 0.68,
+      metalness: 0.22,
       roughness: 0.08,
       clearcoat: 1.0,
     });
     const pearlMesh = new THREE.Mesh(pearlGeom, pearlMat);
     pearlMesh.visible = false;
     rig.add(pearlMesh);
+
+    const meniscusGeom = new THREE.ConeGeometry(0.082, 0.28, 20);
+    const meniscusMesh = new THREE.Mesh(meniscusGeom, pearlMat);
+    meniscusMesh.rotation.x = Math.PI;
+    meniscusMesh.visible = false;
+    rig.add(meniscusMesh);
 
     // Living Cut-Citrine / Molten Amber Saffron Truth Drop
     const dropGroup = new THREE.Group();
@@ -483,7 +491,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           float d = length((vUv - 0.5) * 2.0);
           float g = exp(-d * d * 5.2);
           vec3 col = mix(vec3(0.95, 0.65, 0.22), vec3(0.07, 0.13, 0.25), uLightMode);
-          gl_FragColor = vec4(col, g * uIntensity * mix(0.28, 0.20, uLightMode));
+          gl_FragColor = vec4(col, g * uIntensity * mix(0.32, 0.22, uLightMode));
         }
       `,
     });
@@ -491,12 +499,12 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     floorMesh.position.set(0, DROP_Y - 0.64, -0.15);
     rig.add(floorMesh);
 
-    // ONE Razor-Clean Concentric Ripple Plane on Condensation / Click
+    // Dual Concentric Impact Ripples (Primary + Secondary Echo, Gently Perspective-Tilted for 1× DPR Clarity)
     const rippleGeom = new THREE.PlaneGeometry(2.1, 2.1);
     const rippleUniforms = {
       uOpacity: { value: 0 },
       uLightMode: { value: isLightInit ? 1 : 0 },
-      uColor: { value: new THREE.Color(isLightInit ? 0xc2700a : 0xf7bd56) },
+      uColor: { value: new THREE.Color(isLightInit ? 0xc2700a : 0xffcb66) },
     };
     const rippleMat = new THREE.ShaderMaterial({
       transparent: true,
@@ -507,32 +515,53 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       fragmentShader: RIPPLE_FRAG,
     });
     const rippleMesh = new THREE.Mesh(rippleGeom, rippleMat);
-    rippleMesh.position.set(0, DROP_Y - 0.06, 0);
-    rippleMesh.rotation.x = Math.PI * 0.42;
+    rippleMesh.position.set(0, DROP_Y, -0.04);
+    rippleMesh.rotation.x = Math.PI * 0.14;
     rig.add(rippleMesh);
 
-    // Sealed Mode: ONE Serene Machined Emerald Precision Seal Ring (Zero Clutter!)
+    const rippleUniforms2 = {
+      uOpacity: { value: 0 },
+      uLightMode: { value: isLightInit ? 1 : 0 },
+      uColor: { value: new THREE.Color(isLightInit ? 0xc2700a : 0xffcb66) },
+    };
+    const rippleMat2 = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: rippleUniforms2,
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: RIPPLE_FRAG,
+    });
+    const rippleMesh2 = new THREE.Mesh(rippleGeom, rippleMat2);
+    rippleMesh2.position.set(0, DROP_Y, -0.05);
+    rippleMesh2.rotation.x = Math.PI * 0.14;
+    rig.add(rippleMesh2);
+
+    // Perpetual Precision Circular Ring Around Bottom Bubble (Calibrated for 1× DPR Full HD -> 2× Retina in ALL Modes!)
     const sealGroup = new THREE.Group();
     sealGroup.position.set(0, DROP_Y, 0);
     rig.add(sealGroup);
 
-    const sealBaseGeom = new THREE.TorusGeometry(DROP_RADIUS * 1.62, 0.009, 12, 96);
+    const RING_R = DROP_RADIUS * 1.60;
+    const sealBaseGeom = new THREE.TorusGeometry(RING_R, 0.0155, 16, 120);
     const sealBaseMat = new THREE.MeshStandardMaterial({
-      color: isLightInit ? 0x0c7e56 : 0x3ce3a8,
-      metalness: 0.75,
-      roughness: 0.2,
+      color: isLightInit ? 0xb86c08 : 0xf2a33a,
+      emissive: isLightInit ? 0x6b3a02 : 0xb5680b,
+      emissiveIntensity: isLightInit ? 0.25 : 0.42,
+      metalness: 0.72,
+      roughness: 0.22,
       transparent: true,
       opacity: 0,
     });
     sealGroup.add(new THREE.Mesh(sealBaseGeom, sealBaseMat));
 
-    const sealArcGeom = new THREE.TorusGeometry(DROP_RADIUS * 1.62, 0.017, 14, 40, Math.PI * 0.42);
+    const sealArcGeom = new THREE.TorusGeometry(RING_R, 0.0265, 16, 48, Math.PI * 0.44);
     const sealArcMat = new THREE.MeshStandardMaterial({
-      color: isLightInit ? 0x0a724d : 0x62f5c0,
-      emissive: isLightInit ? 0x094d35 : 0x3ce3a8,
-      emissiveIntensity: 0.65,
-      metalness: 0.85,
-      roughness: 0.14,
+      color: isLightInit ? 0xc8740a : 0xffd57a,
+      emissive: isLightInit ? 0x854904 : 0xf2a33a,
+      emissiveIntensity: isLightInit ? 0.36 : 0.72,
+      metalness: 0.8,
+      roughness: 0.15,
       transparent: true,
       opacity: 0,
     });
@@ -540,6 +569,25 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     const sealArc2 = new THREE.Mesh(sealArcGeom, sealArcMat);
     sealArc2.rotation.z = Math.PI;
     sealGroup.add(sealArc1, sealArc2);
+
+    // 4 Precision Cardinal Vernier Ticks (Subtle Gold in Sift, Gleaming Emerald in Sealed)
+    const tickGeom = new THREE.BoxGeometry(0.022, 0.095, 0.022);
+    const tickMat = new THREE.MeshStandardMaterial({
+      color: isLightInit ? 0xb86c08 : 0xffd57a,
+      emissive: isLightInit ? 0x6b3a02 : 0xf2a33a,
+      emissiveIntensity: 0.45,
+      metalness: 0.8,
+      roughness: 0.18,
+      transparent: true,
+      opacity: 0,
+    });
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 2;
+      const tick = new THREE.Mesh(tickGeom, tickMat);
+      tick.position.set(Math.cos(a) * RING_R, Math.sin(a) * RING_R, 0);
+      tick.rotation.z = a + Math.PI / 2;
+      sealGroup.add(tick);
+    }
 
     // Press-and-Hold Radial Distillation Charge Shader Plane (visible ONLY while holding!)
     const chargePlaneGeom = new THREE.PlaneGeometry(DROP_RADIUS * 3.85, DROP_RADIUS * 3.85);
@@ -575,15 +623,28 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     chargeMesh.position.set(0, DROP_Y, 0.16);
     rig.add(chargeMesh);
 
-    // 32 Crisp, Deliberate 3D Interactive Claim Orbs (InstancedMesh — Zero Confetti!)
-    const MAX_CLAIMS = 32;
-    const claimGeom = new THREE.SphereGeometry(0.042, 14, 14);
+    // Whisper-Quiet 3D Horological Orbital Gimbal Ring (0 opacity at rest; fades in ONLY during active 360° drag)
+    const gimbalGeom = new THREE.TorusGeometry(2.38, 0.0085, 10, 128);
+    const gimbalMat = new THREE.MeshBasicMaterial({
+      color: isLightInit ? 0x12203f : 0xf4f0e8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const gimbalOuter = new THREE.Mesh(gimbalGeom, gimbalMat);
+    const gimbalEq = new THREE.Mesh(gimbalGeom, gimbalMat.clone());
+    gimbalEq.rotation.x = Math.PI / 2;
+    rig.add(gimbalOuter, gimbalEq);
+
+    // 36 Crisp, Deliberate 3D Interactive Claim Droplets (Calibrated for 1× DPR Full HD Clarity!)
+    const MAX_CLAIMS = 36;
+    const claimGeom = new THREE.SphereGeometry(0.056, 16, 16);
     const claimMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      metalness: 0.35,
-      roughness: 0.22,
-      emissive: 0x221604,
-      emissiveIntensity: 0.25,
+      metalness: 0.22,
+      roughness: 0.18,
+      emissive: 0x3b2404,
+      emissiveIntensity: 0.48,
     });
     const claimInst = new THREE.InstancedMesh(claimGeom, claimMat, MAX_CLAIMS);
     claimInst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -618,18 +679,26 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       });
     };
 
-    // Unified tactile pointer state (Hover Pour + Hold-to-Distill + Full 360° X/Y/Z Quaternion Trackball + Flick Inertia + Elastic Drop Pull)
+    // Unified tactile pointer state (Hover Pour + Hold-to-Distill + Slow 360° Horological Auto-Rotate + Axis-Memory Flick Cruise + Elastic Drop Pull)
     const search = typeof window !== 'undefined' ? window.location.search : '';
     const forceChargePreview = search.includes('charging=1');
     const forceOrbitPreview = search.includes('orbit=1');
     const forceFlipPreview = search.includes('flip=1');
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     const AXIS_X = new THREE.Vector3(1, 0, 0);
     const AXIS_Y = new THREE.Vector3(0, 1, 0);
     const AXIS_Z = new THREE.Vector3(0, 0, 1);
+    const DEFAULT_CRUISE_AXIS = new THREE.Vector3(0.05, 1.0, 0.0).normalize();
+    const DEFAULT_CRUISE_SPEED = 0.62; // ~10.1s per full 360° 3D revolution (~35.5°/sec)
     const IDENTITY_Q = new THREE.Quaternion();
     const tmpQ1 = new THREE.Quaternion();
     const tmpQ2 = new THREE.Quaternion();
+    const tmpVec = new THREE.Vector3();
+    const frontNormal = new THREE.Vector3();
+    const dropWorldVec = new THREE.Vector3();
     const tmpEuler = new THREE.Euler(0, 0, 0, 'YXZ');
     const baseTiltQ = new THREE.Quaternion();
 
@@ -640,6 +709,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       userQuat.setFromEuler(new THREE.Euler(0.28, 2.55, -0.36, 'YXZ'));
     }
 
+    const cruiseAxis = DEFAULT_CRUISE_AXIS.clone();
     const pointer = { x: 0, y: 0, tx: 0, ty: 0, wx: 0, wy: 0, inside: false };
     const gesture = {
       mode: (forceChargePreview ? 'charge' : forceOrbitPreview || forceFlipPreview ? 'orbit' : 'idle') as
@@ -661,7 +731,11 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       velX: 0,
       velY: 0,
       velZ: 0,
-      stillTimer: 0,
+      extraSpeed: 0,
+      cruiseSpeed: DEFAULT_CRUISE_SPEED,
+      customSpin: false,
+      hudTimer: 0,
+      hoverBrake: 1,
       resetting: false,
       pullX: 0,
       pullY: 0,
@@ -687,7 +761,14 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       gesture.velX = 0;
       gesture.velY = 0;
       gesture.velZ = 0;
+      gesture.extraSpeed = 0;
+      gesture.cruiseSpeed = DEFAULT_CRUISE_SPEED;
+      gesture.customSpin = false;
+      cruiseAxis.copy(DEFAULT_CRUISE_AXIS);
       gesture.resetting = true;
+      gesture.hudTimer = 0;
+      setHasCustomSpin(false);
+      syncHud('');
       soundEngine.playSieveDrop();
     };
 
@@ -706,18 +787,21 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       gesture.prevX = e.clientX;
       gesture.prevY = e.clientY;
       gesture.prevAngle = Math.atan2(ny, nx);
-      gesture.zRoll = e.shiftKey || Math.hypot(nx, ny) > 0.66;
+      gesture.zRoll = e.shiftKey || Math.hypot(nx, ny) > 0.68;
       gesture.downTime = performance.now();
       gesture.chargeTriggered = false;
       gesture.lastChargeTick = 0;
       gesture.resetting = false;
-      gesture.stillTimer = 0;
       gesture.velX = 0;
       gesture.velY = 0;
       gesture.velZ = 0;
+      gesture.extraSpeed = 0;
 
-      const isNearHome = 2 * Math.acos(Math.min(1, Math.abs(userQuat.w))) < 0.25;
-      if (isNearHome && Math.hypot(pointer.wx, pointer.wy - DROP_Y) < 0.65 && entranceRef.current > 0.85) {
+      // Project the actual rotated bottom Saffron Drop position so grabbing it works at any gentle turn angle
+      dropWorldVec.set(0, DROP_Y, 0).applyQuaternion(userQuat);
+      frontNormal.set(0, 0, 1).applyQuaternion(userQuat);
+      const faceFacing = Math.abs(frontNormal.z) > 0.55;
+      if (faceFacing && Math.hypot(pointer.wx - dropWorldVec.x, pointer.wy - dropWorldVec.y) < 0.72 && entranceRef.current > 0.85) {
         gesture.mode = 'pull-drop';
         soundEngine.playTick(680);
       } else {
@@ -791,7 +875,11 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           gesture.prevX = e.clientX;
           gesture.prevY = e.clientY;
           gesture.prevAngle = curAngle;
-          gesture.stillTimer = 0;
+          gesture.hudTimer = 2.0;
+          if (!gesture.customSpin) {
+            gesture.customSpin = true;
+            setHasCustomSpin(true);
+          }
         }
         return;
       }
@@ -832,6 +920,22 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         }
       } else if (prevMode === 'orbit') {
         soundEngine.playTick(540);
+        // Adopt the user's exact 3D flick axis & spin direction (CW / CCW / diagonal / Z-roll) as continuous cruise!
+        const releaseSpeed = Math.hypot(gesture.velX, gesture.velY, gesture.velZ);
+        if (releaseSpeed > 0.18) {
+          tmpVec.set(gesture.velX, gesture.velY, gesture.velZ).normalize();
+          cruiseAxis.copy(tmpVec);
+          gesture.cruiseSpeed = 0.62;
+          gesture.extraSpeed = Math.min(8.5, Math.max(0, releaseSpeed - gesture.cruiseSpeed));
+        } else {
+          // User deliberately positioned the logo at an angle: preserve angle with gentle slow cruise
+          gesture.cruiseSpeed = 0.36;
+          gesture.extraSpeed = 0;
+        }
+        gesture.velX = 0;
+        gesture.velY = 0;
+        gesture.velZ = 0;
+        gesture.hudTimer = 1.9;
       }
 
       gesture.mode = 'idle';
@@ -858,7 +962,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h, false);
-      rig.scale.setScalar(w < 380 ? 0.96 : 1.08);
+      rig.scale.setScalar(w < 360 ? 0.94 : 1.0);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -873,9 +977,21 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     );
     io.observe(container);
 
-    if (search.includes('settled=1') || forceChargePreview || forceOrbitPreview || forceFlipPreview) {
+    const forceCondensePreview = search.includes('midcondense=1');
+    if (
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview
+    ) {
       entranceRef.current = 1;
-      for (let i = 0; i < 14; i++) spawnClaim(undefined, 0.5 + Math.random() * 1.9);
+      for (let i = 0; i < 14; i++) {
+        spawnClaim(undefined, 0.35 + Math.random() * 2.0, i % 2 === 0 ? 'verified' : undefined);
+      }
+      if (forceCondensePreview) {
+        condenseRef.current = 0.44;
+      }
     } else if (search.includes('midforge=1')) {
       entranceRef.current = 0.56;
       condenseRef.current = 0.28;
@@ -890,11 +1006,21 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     let sealedBlend = 0;
     let dropSquash = 0;
     let dropVel = 0;
-    let rippleAge = 99;
+    let rippleAge = forceCondensePreview ? 0.24 : 99;
     let prevImpact = false;
     let prevIsLight = isLightInit;
+    let initialStreamSeeded =
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview;
     let entranceDropFired =
-      search.includes('settled=1') || forceChargePreview || forceOrbitPreview || forceFlipPreview;
+      search.includes('settled=1') ||
+      forceCondensePreview ||
+      forceChargePreview ||
+      forceOrbitPreview ||
+      forceFlipPreview;
 
     const darkFaceCol = new THREE.Color(0xf4efe4);
     const lightFaceCol = new THREE.Color(0x162b5c);
@@ -902,12 +1028,14 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     const lightSideCol = new THREE.Color(0x22468c);
     const noiseFaceDark = new THREE.Color(0xb8a8a6);
     const noiseFaceLight = new THREE.Color(0x2c2232);
+    const ringColTmp = new THREE.Color();
+    const ringEmTmp = new THREE.Color();
 
     const animate = () => {
       rafId = requestAnimationFrame(animate);
       if (!isVisible) return;
 
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const dt = Math.min(Math.max(0, clock.getDelta()), 0.05);
       const elapsed = clock.elapsedTime;
       const curMode = modeRef.current;
       const modeVal = curMode === 'noise' ? 1 : curMode === 'sealed' ? 2 : 0;
@@ -920,17 +1048,23 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       if (resetQuatRef.current) {
         resetQuatRef.current = false;
         userQuat.copy(IDENTITY_Q);
+        cruiseAxis.copy(DEFAULT_CRUISE_AXIS);
         gesture.velX = 0;
         gesture.velY = 0;
         gesture.velZ = 0;
+        gesture.extraSpeed = 0;
+        gesture.cruiseSpeed = DEFAULT_CRUISE_SPEED;
+        gesture.customSpin = false;
         gesture.resetting = false;
-        gesture.stillTimer = 0;
+        gesture.hudTimer = 0;
+        setHasCustomSpin(false);
         syncHud('');
       }
 
-      // Press-and-Hold Distillation Charge (0 -> 1) + Full 360° X/Y/Z Quaternion Inertia & Gentle Home Slerp
+      // Press-and-Hold Distillation Charge (0 -> 1) + Continuous Smooth 3D Whole-Logo Auto-Rotate & Axis-Memory Cruise
       const rotAngleFromHome = 2 * Math.acos(Math.min(1, Math.abs(userQuat.w)));
-      const speedMag = Math.hypot(gesture.velX, gesture.velY, gesture.velZ);
+      const wantBrake = hoveredRef.current && gesture.mode === 'idle' && !gesture.customSpin ? 0.58 : 1.0;
+      gesture.hoverBrake += (wantBrake - gesture.hoverBrake) * (1 - Math.exp(-dt * 5.0));
 
       if (gesture.mode === 'charge' && !gesture.chargeTriggered) {
         if (!forceChargePreview) {
@@ -955,40 +1089,34 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         if (!forceChargePreview) gesture.charge = Math.max(0, gesture.charge - dt * 3.8);
 
         if (gesture.mode === 'idle' && !forceOrbitPreview && !forceFlipPreview) {
-          if (speedMag > 0.015) {
-            // Apply weighted horological flick inertia on all 3 axes!
-            tmpQ1.setFromAxisAngle(AXIS_Y, gesture.velY * dt);
-            tmpQ2.setFromAxisAngle(AXIS_X, gesture.velX * dt);
-            userQuat.premultiply(tmpQ1).premultiply(tmpQ2);
-            if (Math.abs(gesture.velZ) > 0.005) {
-              tmpQ1.setFromAxisAngle(AXIS_Z, gesture.velZ * dt);
-              userQuat.premultiply(tmpQ1);
+          if (gesture.resetting) {
+            userQuat.slerp(IDENTITY_Q, 1 - Math.exp(-dt * 7.5));
+            if (2 * Math.acos(Math.min(1, Math.abs(userQuat.w))) < 0.012) {
+              userQuat.copy(IDENTITY_Q);
+              gesture.resetting = false;
             }
-            userQuat.normalize();
-            const friction = Math.exp(-dt * 2.8);
-            gesture.velX *= friction;
-            gesture.velY *= friction;
-            gesture.velZ *= friction;
-            gesture.stillTimer = 0;
-          } else if (rotAngleFromHome > 0.02) {
-            gesture.velX = 0;
-            gesture.velY = 0;
-            gesture.velZ = 0;
-            if (!hoveredRef.current || gesture.resetting) {
-              gesture.stillTimer += dt;
+          } else if (entranceRef.current > 0.25) {
+            const ramp = Math.min(1, (entranceRef.current - 0.25) / 0.45);
+            const smoothRamp = ramp * ramp * (3 - 2 * ramp);
+            const motionScale = prefersReducedMotion ? 0.35 : 1.0;
+            const activeSpeed = (gesture.cruiseSpeed * gesture.hoverBrake * motionScale + gesture.extraSpeed) * smoothRamp;
+            if (activeSpeed > 0.002) {
+              tmpQ1.setFromAxisAngle(cruiseAxis, activeSpeed * dt);
+              userQuat.premultiply(tmpQ1).normalize();
             }
-            if (gesture.resetting || gesture.stillTimer > 2.4) {
-              userQuat.slerp(IDENTITY_Q, 1 - Math.exp(-dt * (gesture.resetting ? 7.5 : 3.2)));
-              if (2 * Math.acos(Math.min(1, Math.abs(userQuat.w))) < 0.01) {
-                userQuat.copy(IDENTITY_Q);
-                gesture.resetting = false;
-                gesture.stillTimer = 0;
-              }
+            if (gesture.extraSpeed > 0.004) {
+              gesture.extraSpeed *= Math.exp(-dt * 2.4);
+            } else {
+              gesture.extraSpeed = 0;
             }
           }
         }
 
-        if (gesture.mode === 'orbit' || rotAngleFromHome > 0.09 || forceOrbitPreview || forceFlipPreview) {
+        if (gesture.hudTimer > 0 && gesture.mode === 'idle') {
+          gesture.hudTimer = Math.max(0, gesture.hudTimer - dt);
+        }
+
+        if (gesture.mode === 'orbit' || gesture.hudTimer > 0.02 || forceOrbitPreview || forceFlipPreview) {
           tmpEuler.setFromQuaternion(userQuat, 'YXZ');
           const dx = Math.round(THREE.MathUtils.radToDeg(tmpEuler.x));
           const dy = Math.round(THREE.MathUtils.radToDeg(tmpEuler.y));
@@ -996,8 +1124,8 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           const fmt = (n: number) => `${n >= 0 ? '+' : ''}${n}°`;
           syncHud(
             gesture.mode === 'orbit' && gesture.zRoll
-              ? `Z-ROLL · Z ${fmt(dz)} · DBL-CLICK`
-              : `360° · X ${fmt(dx)}  Y ${fmt(dy)}  Z ${fmt(dz)} · DBL-CLICK`
+              ? `Z-ROLL · Z ${fmt(dz)} · DBL-CLICK RESET`
+              : `AXIS LOCKED · X ${fmt(dx)}  Y ${fmt(dy)}  Z ${fmt(dz)} · DBL-CLICK`
           );
         } else if (gesture.mode === 'pull-drop') {
           syncHud('RELEASE TO CONDENSE');
@@ -1031,9 +1159,16 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         condenseRef.current = 0;
       }
 
+      if (!initialStreamSeeded && ent >= 0.66) {
+        initialStreamSeeded = true;
+        for (let i = 0; i < 7; i++) {
+          spawnClaim(undefined, 0.75 + Math.random() * 1.65, i < 4 ? 'verified' : 'noise');
+        }
+      }
+
       if (curMode === 'sift' && ent >= 0.99 && condenseRef.current >= 1 && gesture.mode === 'idle') {
         autoPulseTimer += dt;
-        if (autoPulseTimer > 5.8) {
+        if (autoPulseTimer > 2.6) {
           autoPulseTimer = 0;
           gesture.isSuperDrop = false;
           condenseRef.current = 0;
@@ -1041,55 +1176,76 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
         }
       }
 
-      if (condenseRef.current < 1 && !search.includes('midforge=1')) {
-        condenseRef.current = Math.min(1, condenseRef.current + dt * 1.18);
+      if (condenseRef.current < 1 && !search.includes('midforge=1') && !forceCondensePreview) {
+        condenseRef.current = Math.min(1, condenseRef.current + dt * 0.85);
       }
       const cT = condenseRef.current;
 
-      // Liquid-Gold Teardrop Condensation (or Hanging Charged Meniscus!) across the exact 0.6S gap
-      if (gesture.charge > 0.14 && noiseBlend < 0.4 && cT >= 0.62) {
+      // Liquid-Gold Teardrop Condensation + Tapered Meniscus across the exact 0.6S gap
+      if (gesture.charge > 0.14 && noiseBlend < 0.4 && cT >= 0.66) {
         pearlMesh.visible = true;
-        pearlMesh.position.set(0, APEX_Y - 0.04 - gesture.charge * 0.24, 0.02);
-        pearlMesh.scale.set(0.38 + gesture.charge * 0.55, 0.42 + gesture.charge * 1.15, 0.38 + gesture.charge * 0.55);
-      } else if (cT < 0.62 && noiseBlend < 0.4) {
+        meniscusMesh.visible = true;
+        const dropOffset = 0.06 + gesture.charge * 0.25;
+        pearlMesh.position.set(0, APEX_Y - dropOffset, 0.03);
+        pearlMesh.scale.set(0.42 + gesture.charge * 0.56, 0.48 + gesture.charge * 1.15, 0.42 + gesture.charge * 0.56);
+        meniscusMesh.position.set(0, APEX_Y - dropOffset * 0.42, 0.03);
+        meniscusMesh.scale.set(0.55 + gesture.charge * 0.45, Math.max(0.35, dropOffset * 3.4), 0.55 + gesture.charge * 0.45);
+      } else if (cT < 0.66 && noiseBlend < 0.4) {
         pearlMesh.visible = true;
         const sc = gesture.isSuperDrop ? 1.24 : 1.0;
-        if (cT < 0.36) {
-          const p = cT / 0.36;
+        if (cT < 0.40) {
+          const p = cT / 0.40;
           const ease = 1 - Math.pow(1 - p, 2);
-          pearlMesh.position.set(0, APEX_Y - 0.04 - ease * 0.24, 0.02);
-          pearlMesh.scale.set((0.35 + ease * 0.48) * sc, (0.4 + ease * 1.05) * sc, (0.35 + ease * 0.48) * sc);
+          const dropOffset = 0.05 + ease * 0.26;
+          pearlMesh.position.set(0, APEX_Y - dropOffset, 0.03);
+          pearlMesh.scale.set((0.40 + ease * 0.54) * sc, (0.48 + ease * 1.08) * sc, (0.40 + ease * 0.54) * sc);
+          meniscusMesh.visible = true;
+          meniscusMesh.position.set(0, APEX_Y - dropOffset * 0.44, 0.03);
+          meniscusMesh.scale.set((0.72 - p * 0.34) * sc, Math.max(0.35, dropOffset * 3.5) * sc, (0.72 - p * 0.34) * sc);
         } else {
-          const p = (cT - 0.36) / 0.26;
+          meniscusMesh.visible = false;
+          const p = (cT - 0.40) / 0.26;
           const accel = p * p;
-          pearlMesh.position.set(0, THREE.MathUtils.lerp(APEX_Y - 0.28, DROP_Y, accel), 0.02);
-          pearlMesh.scale.set(0.76 * sc, 1.05 * sc, 0.76 * sc);
+          pearlMesh.position.set(0, THREE.MathUtils.lerp(APEX_Y - 0.31, DROP_Y, accel), 0.03);
+          pearlMesh.scale.set(0.84 * sc, 1.24 * sc, 0.84 * sc);
         }
       } else {
         pearlMesh.visible = false;
+        meniscusMesh.visible = false;
       }
 
-      if (cT >= 0.58 && cT < 0.95 && !prevImpact) {
+      if (cT >= 0.62 && cT < 0.95 && !prevImpact) {
         prevImpact = true;
-        dropVel += gesture.isSuperDrop ? 4.1 : 2.6;
+        dropVel += gesture.isSuperDrop ? 4.2 : 2.8;
         rippleAge = 0;
       }
-      if (cT < 0.4) prevImpact = false;
+      if (cT < 0.42) prevImpact = false;
 
       // Damped spring squash & stretch on Saffron Drop
       const accel = -140 * dropSquash - 12 * dropVel;
       dropVel += accel * dt;
       dropSquash += dropVel * dt;
 
-      // Ripple progression
-      if (rippleAge < 1.15) {
-        rippleAge += dt;
-        const p = Math.min(1, rippleAge / 1.15);
-        const e = 1 - Math.pow(1 - p, 2.6);
-        rippleMesh.scale.setScalar(0.38 + e * 1.95);
-        rippleUniforms.uOpacity.value = (1 - p) * 0.85;
+      // Dual Concentric Impact Ripples (Primary + Secondary Echo — Unclipped & Crisp on 1× DPR Full HD)
+      if (rippleAge < 1.38) {
+        if (!forceCondensePreview) rippleAge += dt;
+        const p1 = Math.min(1, rippleAge / 1.15);
+        const e1 = 1 - Math.pow(1 - p1, 2.5);
+        rippleMesh.scale.setScalar(0.38 + e1 * 1.12);
+        rippleUniforms.uOpacity.value = rippleAge < 1.15 ? (1 - p1) * 0.94 : 0;
+
+        const age2 = rippleAge - 0.18;
+        if (age2 > 0 && age2 < 1.18) {
+          const p2 = Math.min(1, age2 / 1.18);
+          const e2 = 1 - Math.pow(1 - p2, 2.5);
+          rippleMesh2.scale.setScalar(0.35 + e2 * 0.86);
+          rippleUniforms2.uOpacity.value = (1 - p2) * 0.58;
+        } else {
+          rippleUniforms2.uOpacity.value = 0;
+        }
       } else {
         rippleUniforms.uOpacity.value = 0;
+        rippleUniforms2.uOpacity.value = 0;
       }
 
       // Seamless vs 3-Piece Kinematic Aperture Split in Raw Chat
@@ -1119,6 +1275,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       dropUniforms.uLightMode.value = curL;
       floorUniforms.uLightMode.value = curL;
       rippleUniforms.uLightMode.value = curL;
+      rippleUniforms2.uLightMode.value = curL;
       dropUniforms.uTime.value = elapsed;
       dropUniforms.uMode.value = modeVal;
       dropUniforms.uPulse.value = Math.min(1, Math.abs(dropSquash) * 4.5);
@@ -1132,18 +1289,54 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       innerRimMat.color.setHex(
         curMode === 'sealed' ? (isLight ? 0x0c865c : 0x3ce3a8) : isLight ? 0xd08314 : 0xf6b94c
       );
-      rippleUniforms.uColor.value.setHex(
-        curMode === 'sealed' ? (isLight ? 0x0c7e56 : 0x3ce3a8) : isLight ? 0xc2700a : 0xf7bd56
-      );
+      const ripHex =
+        curMode === 'sealed' ? (isLight ? 0x0c7e56 : 0x3ce3a8) : isLight ? 0xb86c08 : 0xffcb66;
+      rippleUniforms.uColor.value.setHex(ripHex);
+      rippleUniforms2.uColor.value.setHex(ripHex);
+      pearlMat.color.setHex(isLight ? 0xd97d0c : 0xffc65c);
+      pearlMat.emissive.setHex(isLight ? 0x994c04 : 0xe6840e);
+      pearlMat.emissiveIntensity = isLight ? 0.42 : 0.68;
 
-      // Sealed Mode (or Super-Distillation flash) single precision ring + Hold Charge ring
+      // Perpetual Precision Circular Ring Around Bottom Bubble (Saffron in Sift -> Emerald in Sealed -> Crimson in Raw Chat)
       const emeraldVis = Math.max(sealedBlend, gesture.superHalo);
-      sealBaseMat.color.setHex(isLight ? 0x0c7e56 : 0x3ce3a8);
-      sealArcMat.color.setHex(isLight ? 0x0a724d : 0x62f5c0);
-      sealBaseMat.opacity = emeraldVis * dropAppear * (isLight ? 0.32 : 0.26);
-      sealArcMat.opacity = emeraldVis * dropAppear * 0.94;
-      sealGroup.rotation.z = elapsed * 0.45;
-      sealGroup.rotation.x = 0.22 * Math.sin(elapsed * 0.5);
+      const impactBoost = Math.min(1, Math.abs(dropSquash) * 4.2);
+      const baseRingHex =
+        emeraldVis > 0.35
+          ? isLight ? 0x0c865c : 0x3ce3a8
+          : noiseBlend > 0.45
+            ? isLight ? 0xb8322c : 0xe05852
+            : isLight ? 0xb86c08 : 0xf2a33a;
+      const arcRingHex =
+        emeraldVis > 0.35
+          ? isLight ? 0x0a724d : 0x62f5c0
+          : noiseBlend > 0.45
+            ? isLight ? 0x992620 : 0xf07169
+            : isLight ? 0xc8740a : 0xffd57a;
+      ringColTmp.setHex(baseRingHex);
+      sealBaseMat.color.lerp(ringColTmp, matBlend);
+      ringEmTmp.setHex(baseRingHex);
+      sealBaseMat.emissive.lerp(ringEmTmp, matBlend);
+      sealBaseMat.emissiveIntensity = (isLight ? 0.26 : 0.46) + impactBoost * 0.35;
+
+      ringColTmp.setHex(arcRingHex);
+      sealArcMat.color.lerp(ringColTmp, matBlend);
+      sealArcMat.emissive.lerp(ringColTmp, matBlend);
+      sealArcMat.emissiveIntensity = (isLight ? 0.38 : 0.72) + impactBoost * 0.45;
+
+      tickMat.color.copy(sealArcMat.color);
+      tickMat.emissive.copy(sealArcMat.emissive);
+
+      const baseRingAlpha = emeraldVis > 0.35 ? 0.56 : noiseBlend > 0.45 ? 0.42 : isLight ? 0.46 : 0.50;
+      const arcRingAlpha = emeraldVis > 0.35 ? 0.98 : noiseBlend > 0.45 ? 0.64 : 0.94;
+      const tickAlpha = emeraldVis > 0.35 ? 0.94 : noiseBlend > 0.45 ? 0.32 : 0.58;
+      sealBaseMat.opacity = dropAppear * baseRingAlpha;
+      sealArcMat.opacity = dropAppear * arcRingAlpha;
+      tickMat.opacity = dropAppear * tickAlpha;
+      const ringBreath = 1 + Math.abs(dropSquash) * 0.26 + gesture.charge * 0.06;
+      sealGroup.scale.setScalar(Math.max(0.001, dropAppear * ringBreath));
+      // Keep the precision halo ring anchored smoothly to the rotating 3D sculpture (no competing spin)
+      sealGroup.rotation.z = 0;
+      sealGroup.rotation.x = 0;
 
       chargeUniforms.uProgress.value = gesture.charge;
       chargeUniforms.uLightMode.value = curL;
@@ -1170,12 +1363,14 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       const dSc = Math.max(0.001, dropAppear * (1 + gesture.charge * 0.09));
       dropGroup.scale.set(dSc * (1 + sq * 0.85), dSc * (1 - sq * 0.72), dSc * (1 + sq * 0.4));
       sealGroup.position.copy(dropGroup.position);
+      rippleMesh.position.set(dropGroup.position.x, dropGroup.position.y, dropGroup.position.z - 0.04);
+      rippleMesh2.position.set(dropGroup.position.x, dropGroup.position.y, dropGroup.position.z - 0.05);
       chargeMesh.position.set(dropGroup.position.x, dropGroup.position.y, dropGroup.position.z + 0.16);
       floorUniforms.uIntensity.value = dropAppear;
 
       // Calm 3D claim physics
-      if (ent > 0.82 && curMode !== 'sealed') {
-        spawnAccum += dt * (curMode === 'noise' ? 5.5 : 3.8);
+      if (ent > 0.72 && curMode !== 'sealed') {
+        spawnAccum += dt * (curMode === 'noise' ? 6.8 : 5.2);
         while (spawnAccum >= 1) {
           spawnAccum -= 1;
           spawnClaim(undefined, undefined, curMode === 'noise' ? (Math.random() < 0.8 ? 'noise' : 'verified') : undefined);
@@ -1239,7 +1434,11 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           const fade = Math.min(1, (2.65 - m.y) / 0.55) * Math.min(1, (m.maxLife - m.life) / 0.55);
           const sc = Math.max(0.001, m.radius * Math.max(0, fade));
           dummy.position.set(m.x, m.y, m.z);
-          dummy.scale.setScalar(sc);
+          if (m.kind === 'verified' && m.state === 'funneling') {
+            dummy.scale.set(sc * 0.88, sc * 1.52, sc * 0.88);
+          } else {
+            dummy.scale.setScalar(sc);
+          }
           dummy.updateMatrix();
           claimInst.setMatrixAt(i, dummy.matrix);
           if (m.kind === 'verified') {
@@ -1267,17 +1466,31 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       keyLight.position.x = 3.8 + pointer.x * 3.8 + Math.sin(elapsed * 0.48) * 1.8;
       keyLight.position.y = 6.2 + pointer.y * 2.2;
 
-      const idleBlend = Math.max(0, 1 - rotAngleFromHome * 2.2);
+      // Subtle sculptural breathing pitch tilt layered gently over the continuous 3D rotation
+      const breatheWeight = gesture.customSpin ? 0.16 : 0.45;
       tmpEuler.set(
-        (-pointer.y * 0.1 + 0.03) * idleBlend,
-        (pointer.x * 0.22 - 0.08 + Math.sin(elapsed * 0.55) * 0.055) * idleBlend,
-        0,
+        (-pointer.y * 0.08 + Math.sin(elapsed * 0.42) * 0.11) * breatheWeight,
+        pointer.x * 0.12 * (gesture.customSpin ? 0.25 : 0.55),
+        Math.sin(elapsed * 0.31) * 0.03 * breatheWeight,
         'YXZ'
       );
       baseTiltQ.setFromEuler(tmpEuler);
       rig.quaternion.copy(userQuat).multiply(baseTiltQ);
-      rig.position.y = 0.28 + Math.sin(elapsed * 0.95) * 0.045;
-      camera.position.z = 10.6 - (hoveredRef.current ? 0.14 : 0) - gesture.charge * 0.42;
+      // Avoid unused variable warning for rotAngleFromHome
+      void rotAngleFromHome;
+      rig.position.y = 0.22 + Math.sin(elapsed * 0.95) * 0.04;
+      camera.position.z = 11.25 - (hoveredRef.current ? 0.14 : 0) - gesture.charge * 0.42;
+
+      // Orbital gimbal reticle fades in smoothly ONLY while actively dragging 360°
+      const wantGimbal = gesture.mode === 'orbit' || forceOrbitPreview || forceFlipPreview ? 1 : 0;
+      const gTargetOp = wantGimbal * (gesture.zRoll ? 0.34 : 0.16);
+      gimbalMat.opacity += (gTargetOp - gimbalMat.opacity) * damp;
+      gimbalMat.color.setHex(
+        gesture.zRoll ? (isLight ? 0xb86c08 : 0xf2a33a) : isLight ? 0x12203f : 0xf4f0e8
+      );
+      const eqMat = gimbalEq.material as THREE.MeshBasicMaterial;
+      eqMat.opacity += (wantGimbal * 0.11 - eqMat.opacity) * damp;
+      eqMat.color.setHex(isLight ? 0x12203f : 0xf4f0e8);
 
       renderer.render(scene, camera);
       if (!notifiedLive) {
@@ -1308,6 +1521,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       faceMat.dispose();
       sideMat.dispose();
       pearlGeom.dispose();
+      meniscusGeom.dispose();
       pearlMat.dispose();
       dropGeom.dispose();
       dropMat.dispose();
@@ -1315,12 +1529,18 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       floorMat.dispose();
       rippleGeom.dispose();
       rippleMat.dispose();
+      rippleMat2.dispose();
       sealBaseGeom.dispose();
       sealBaseMat.dispose();
       sealArcGeom.dispose();
       sealArcMat.dispose();
+      tickGeom.dispose();
+      tickMat.dispose();
       chargePlaneGeom.dispose();
       chargeMat.dispose();
+      gimbalGeom.dispose();
+      gimbalMat.dispose();
+      (gimbalEq.material as THREE.Material).dispose();
       claimGeom.dispose();
       claimMat.dispose();
       renderer.dispose();
@@ -1369,6 +1589,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       <div className={`logo-prelude-svg ${liveActive ? 'is-hidden' : ''}`} aria-hidden={liveActive}>
         <svg viewBox="0 0 512 512" className="logo-hero-svg" role="img" aria-label="Vivechak Epistemic Sieve mark">
           <path d={`${OUTER_SVG} ${INNER_SVG}`} fillRule="evenodd" className="vck-mark-body" />
+          <circle cx="256" cy="374.16" r="34.5" fill="none" stroke="#F2A33A" strokeOpacity="0.38" strokeWidth="1.6" />
           <circle cx="256" cy="374.16" r="21.6" fill="#F2A33A" />
         </svg>
       </div>
@@ -1403,22 +1624,41 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
           )}
         </AnimatePresence>
         {hoveredStage && !hasInteracted && !hudLabel && mode === 'sift' && (
-          <span className="logo-first-whisper mono">DRAG 360° X·Y·Z · HOLD TO DISTILL</span>
+          <span className="logo-first-whisper mono">DRAG TO SPIN · FLICK SETS AXIS · HOLD TO DISTILL</span>
         )}
         {hudLabel && <span className="logo-hud-chip mono">{hudLabel}</span>}
       </div>
 
-      <button
-        type="button"
-        id="btn-replay-logo"
-        className="logo-replay-btn mono"
-        onClick={handleReplay}
-        title="Replay entrance & liquid condensation"
-        aria-label="Replay Vivechak logo animation"
-      >
-        <RotateCcw size={11} />
-        <span>Replay</span>
-      </button>
+      <div className="logo-corner-controls">
+        {hasCustomSpin && (
+          <button
+            type="button"
+            id="btn-reset-axis"
+            className="logo-replay-btn is-visible mono"
+            onClick={(e) => {
+              e.stopPropagation();
+              soundEngine.playSieveDrop();
+              resetQuatRef.current = true;
+            }}
+            title="Reset rotation axis & upright angle"
+            aria-label="Reset 3D rotation axis"
+          >
+            <RotateCcw size={11} />
+            <span>Reset Axis</span>
+          </button>
+        )}
+        <button
+          type="button"
+          id="btn-replay-logo"
+          className="logo-replay-btn mono"
+          onClick={handleReplay}
+          title="Replay entrance & liquid condensation"
+          aria-label="Replay Vivechak logo animation"
+        >
+          <RotateCcw size={11} />
+          <span>Replay</span>
+        </button>
+      </div>
     </div>
   );
 };

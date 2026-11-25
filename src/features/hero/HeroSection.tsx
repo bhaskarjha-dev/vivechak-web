@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Check, Copy, RotateCcw, Terminal } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Copy, RotateCcw, Terminal } from 'lucide-react';
 import { INSTALL_CHANNELS } from '@/shared/data/vivechakData';
 import { copyText } from '@/shared/lib/clipboard';
 import { soundEngine } from '@/shared/lib/sound';
@@ -14,7 +14,7 @@ const loadVivechakLogoHero = () =>
   import('@/features/hero/VivechakLogoHero').then((m) => ({ default: m.VivechakLogoHero }));
 
 // Detect real hardware-accelerated WebGL vs software-emulated / disabled GPU (Cloudtop, CRD, VMs).
-// Hardware GPUs launch full Three.js WebGL2; software/non-GPU browsers run the instant 0ms-load 60fps Canvas2D forge!
+// Hardware GPUs launch full Three.js WebGL2; software/non-GPU browsers run the instant 0ms-load 60fps Canvas2D forge.
 function detectHardwareWebGL(): boolean {
   if (typeof window === 'undefined') return false;
   if (window.location.search.includes('force3d=1')) return true;
@@ -50,6 +50,7 @@ const HeroLogoFallback = () => (
           fillRule="evenodd"
           className="vck-mark-body"
         />
+        <circle cx="256" cy="374.16" r="34.5" fill="none" stroke="#F2A33A" strokeOpacity="0.38" strokeWidth="1.6" />
         <circle cx="256" cy="374.16" r="21.6" fill="#F2A33A" />
       </svg>
     </div>
@@ -79,10 +80,12 @@ const VERIFIED_PROOFS = [
 ];
 
 const MODES: { id: SieveMode; label: string; hint: string; desktopHint?: string }[] = [
-  { id: 'sift', label: 'Sift', hint: 'Drag 360° in 3D', desktopHint: ' · outer rim rolls Z · hold to distill · pull drop' },
-  { id: 'noise', label: 'Raw Chat', hint: 'Sieve parts open — unverified memory pours straight into code' },
-  { id: 'sealed', label: 'Sealed', hint: 'SHA-256 red-team challenge & human TTY sign-off locked' },
+  { id: 'sift', label: 'Sift', hint: 'Drag to spin · flick sets axis', desktopHint: ' · hold to distill · dbl-click resets' },
+  { id: 'noise', label: 'Raw Chat', hint: 'Ungated AI guesses straight into code' },
+  { id: 'sealed', label: 'Sealed', hint: 'Red-teamed & human-signed · Exit 0' },
 ];
+
+const PRIMARY_CHANNEL_IDS = new Set(['shell', 'brew', 'powershell', 'npx', 'uvx', 'skill']);
 
 const SHORT_LABELS: Record<string, string> = {
   shell: 'curl',
@@ -102,14 +105,17 @@ const SHORT_LABELS: Record<string, string> = {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost }) => {
   const [channelId, setChannelId] = useState(INSTALL_CHANNELS[0].id);
+  const [showAllChannels, setShowAllChannels] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<SieveMode>('sift');
-  const [siftedCount, setSiftedCount] = useState(14);
+  const [distilledCount, setDistilledCount] = useState(0);
   const [impulseNonce, setImpulseNonce] = useState(0);
   const [impulseText, setImpulseText] = useState(VERIFIED_PROOFS[0]);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasCustomSpin, setHasCustomSpin] = useState(false);
   const [hoveredSculpture, setHoveredSculpture] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
+  const [resetAxisNonce, setResetAxisNonce] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [heroEngine, setHeroEngine] = useState<'ssr' | 'webgl' | 'canvas2d'>('ssr');
 
@@ -125,6 +131,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
       const saved = localStorage.getItem('vck_install_channel');
       if (saved && INSTALL_CHANNELS.some((c) => c.id === saved)) {
         setChannelId(saved);
+        if (!PRIMARY_CHANNEL_IDS.has(saved)) setShowAllChannels(true);
       } else if (navigator.userAgent && /Windows/i.test(navigator.userAgent)) {
         setChannelId('powershell');
       }
@@ -156,7 +163,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
       setImpulseText(VERIFIED_PROOFS[(next - 1) % VERIFIED_PROOFS.length]);
       return next;
     });
-    setSiftedCount((c) => c + 1);
+    setDistilledCount((c) => c + 1);
   };
 
   const triggerSuperDistill = () => {
@@ -164,9 +171,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
     setHasInteracted(true);
     setImpulseText('SEALED · G1–G12 PASS · EXIT 0');
     setImpulseNonce((n) => n + 1);
-    setSiftedCount((c) => c + 3);
+    setDistilledCount((c) => c + 1);
   };
 
+  const primaryChannels = INSTALL_CHANNELS.filter((c) => PRIMARY_CHANNEL_IDS.has(c.id));
+  const extraChannels = INSTALL_CHANNELS.filter((c) => !PRIMARY_CHANNEL_IDS.has(c.id));
+  const visibleChannels = showAllChannels ? INSTALL_CHANNELS : primaryChannels;
   const activeChannel =
     INSTALL_CHANNELS.find((c) => c.id === channelId) ?? INSTALL_CHANNELS[0];
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0];
@@ -184,27 +194,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
     <section className="hero-stage" id="top">
       <div className="wrap hero-overlay">
         <div className="hero-top-meta mono">
-          <span>OPEN SOURCE · GO MCP SERVER &amp; CLI · V0.1.0</span>
+          <span>OPEN-SOURCE GO MCP SERVER &amp; CLI · V0.1.0</span>
           <span className="hero-live-status">
             <span className={`live-dot mode-${mode}`} aria-hidden="true" />
-            {mode === 'sift' && (
-              <span className="odo-wrap">
-                SIEVE ACTIVE ·{' '}
-                <span className="odo-window" data-count={siftedCount}>
-                  <motion.span
-                    key={siftedCount}
-                    className="odo-digit"
-                    initial={siftedCount === 14 ? false : { y: 8, opacity: 0.35 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    {siftedCount}
-                  </motion.span>
-                </span>{' '}
-                CLAIMS
-              </span>
-            )}
-            {mode === 'noise' && 'RAW RECALL · UNVERIFIED'}
+            {mode === 'sift' &&
+              (distilledCount > 0 ? (
+                <span className="odo-wrap">
+                  SIEVE ACTIVE ·{' '}
+                  <span className="odo-window" data-count={distilledCount}>
+                    <motion.span
+                      key={distilledCount}
+                      className="odo-digit"
+                      initial={{ y: 8, opacity: 0.35 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      +{distilledCount}
+                    </motion.span>
+                  </span>{' '}
+                  DISTILLED
+                </span>
+              ) : (
+                'EPISTEMIC SIEVE · 30° APERTURE'
+              ))}
+            {mode === 'noise' && 'RAW RECALL · UNGATED'}
             {mode === 'sealed' && 'PHASE 0 · SHA-256 SEALED'}
           </span>
         </div>
@@ -212,14 +225,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
         <div className="hero-main">
           <div className="hero-copy">
             <h1 className="hero-h1">
-              Sift truth
+              Prove decisions{' '}
               <br />
               <span className="hero-accent">before code.</span>
             </h1>
 
             <p className="hero-one-liner">
-              Make AI coding agents prove hard architectural decisions with cited research,
-              red-team checks, and human sign-off — stored in Git.
+              Force AI coding agents to cite proof, stress-test tradeoffs, and earn human sign-off — in plain Git Markdown.
             </p>
 
             <div className="hero-actions">
@@ -249,6 +261,117 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
               </motion.a>
             </div>
 
+            <div className="hero-quiet-proof mono" aria-label="Core architectural guarantees">
+              <span className="hqp-item">0 hidden DBs</span>
+              <span className="hqp-item">0 telemetry</span>
+              <span className="hqp-item">9 MCP tools (&lt;10 KB)</span>
+            </div>
+          </div>
+
+          <div className="hero-sculpture-col">
+            {/* Signature Interactive Optical-Prism Monument (WebGL2 on GPU / 60fps True-3D Canvas2D Fallback) */}
+            {heroEngine === 'webgl' ? (
+              <Suspense fallback={<HeroLogoFallback />}>
+                <VivechakLogoHero
+                  mode={mode}
+                  theme={theme}
+                  impulseNonce={impulseNonce}
+                  impulseText={impulseText}
+                  onPulseClick={triggerSculpturePulse}
+                  onSuperDistill={triggerSuperDistill}
+                  onTruthPulse={() => setDistilledCount((n) => n + 1)}
+                />
+              </Suspense>
+            ) : heroEngine === 'canvas2d' ? (
+              <div
+                className={`logo-hero-stage mode-${mode}`}
+                data-engine="canvas2d"
+                id="sculpture-pulse-btn"
+                role="button"
+                tabIndex={0}
+                aria-label="Interactive Vivechak sieve sculpture — drag to orbit 360° across X, Y, and Z, hold to distill truth, pull the drop, or press Enter"
+                onPointerEnter={() => setHoveredSculpture(true)}
+                onPointerLeave={() => setHoveredSculpture(false)}
+                onPointerDown={() => setHasInteracted(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    triggerSculpturePulse();
+                  }
+                }}
+              >
+                <VivechakLogoCanvas2D
+                  mode={mode}
+                  theme={theme}
+                  impulseNonce={impulseNonce}
+                  replayNonce={replayNonce}
+                  resetAxisNonce={resetAxisNonce}
+                  onQuickPulse={triggerSculpturePulse}
+                  onSuperDistill={triggerSuperDistill}
+                  onTruthPulse={() => setDistilledCount((n) => n + 1)}
+                  onCustomSpinChange={setHasCustomSpin}
+                />
+                <div className="logo-pulse-layer" aria-hidden="true">
+                  <AnimatePresence>
+                    {impulseNonce > 0 && (
+                      <motion.span
+                        key={impulseNonce}
+                        className={`sculpture-pulse-tag mono ${impulseText.includes('EXIT 0') ? 'is-super' : ''}`}
+                        initial={{ opacity: 0.98, y: 12, scale: 0.92 }}
+                        animate={{ opacity: 0, y: -38, scale: 1.02 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        {impulseText}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                  {hoveredSculpture && !hasInteracted && mode === 'sift' && (
+                    <span className="logo-first-whisper mono">
+                      DRAG TO SPIN · FLICK SETS AXIS · HOLD TO DISTILL
+                    </span>
+                  )}
+                </div>
+                <div className="logo-corner-controls">
+                  {hasCustomSpin && (
+                    <button
+                      type="button"
+                      id="btn-reset-axis"
+                      className="logo-replay-btn is-visible mono"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundEngine.playSieveDrop();
+                        setResetAxisNonce((n) => n + 1);
+                      }}
+                      title="Reset rotation axis & upright angle"
+                      aria-label="Reset 3D rotation axis"
+                    >
+                      <RotateCcw size={11} />
+                      <span>Reset Axis</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    id="btn-replay-logo"
+                    className="logo-replay-btn mono"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      soundEngine.playTick(760);
+                      setReplayNonce((n) => n + 1);
+                    }}
+                    title="Replay entrance & liquid condensation"
+                    aria-label="Replay Vivechak logo animation"
+                  >
+                    <RotateCcw size={11} />
+                    <span>Replay</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <HeroLogoFallback />
+            )}
+
+            {/* Instrument Lens Controls — Anchored Directly Below the Physical Sieve */}
             <div className="sieve-mode-bar">
               <div className="sieve-pills" role="group" aria-label="3D Epistemic Sieve mode">
                 {MODES.map((m) => (
@@ -283,91 +406,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
               </span>
             </div>
           </div>
-
-          {/* Signature Interactive Optical-Prism & Magnetic-Assembly Forge (Auto WebGL2 on GPU / Instant 60fps Canvas2D on Software/Cloudtop) */}
-          {heroEngine === 'webgl' ? (
-            <Suspense fallback={<HeroLogoFallback />}>
-              <VivechakLogoHero
-                mode={mode}
-                theme={theme}
-                impulseNonce={impulseNonce}
-                impulseText={impulseText}
-                onPulseClick={triggerSculpturePulse}
-                onSuperDistill={triggerSuperDistill}
-                onTruthPulse={() => setSiftedCount((n) => n + 1)}
-              />
-            </Suspense>
-          ) : heroEngine === 'canvas2d' ? (
-            <div
-              className={`logo-hero-stage mode-${mode}`}
-              id="sculpture-pulse-btn"
-              role="button"
-              tabIndex={0}
-              aria-label="Interactive Vivechak sieve sculpture — drag to orbit 3D, hold to distill truth, or press Enter to condense a Grade A drop"
-              onPointerEnter={() => setHoveredSculpture(true)}
-              onPointerLeave={() => setHoveredSculpture(false)}
-              onPointerDown={() => setHasInteracted(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  triggerSculpturePulse();
-                }
-              }}
-            >
-              <VivechakLogoCanvas2D
-                mode={mode}
-                theme={theme}
-                impulseNonce={impulseNonce}
-                replayNonce={replayNonce}
-                onQuickPulse={triggerSculpturePulse}
-                onSuperDistill={triggerSuperDistill}
-                onTruthPulse={() => setSiftedCount((n) => n + 1)}
-              />
-              <div className="logo-pulse-layer" aria-hidden="true">
-                <AnimatePresence>
-                  {impulseNonce > 0 && (
-                    <motion.span
-                      key={impulseNonce}
-                      className={`sculpture-pulse-tag mono ${impulseText.includes('EXIT 0') ? 'is-super' : ''}`}
-                      initial={{ opacity: 0.98, y: 12, scale: 0.92 }}
-                      animate={{ opacity: 0, y: -38, scale: 1.02 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      {impulseText}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                {hoveredSculpture && !hasInteracted && mode === 'sift' && (
-                  <span className="logo-first-whisper mono">
-                    DRAG 360° X·Y·Z · HOLD TO DISTILL
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                id="btn-replay-logo"
-                className="logo-replay-btn mono"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  soundEngine.playTick(760);
-                  setReplayNonce((n) => n + 1);
-                }}
-                title="Replay entrance & liquid condensation"
-                aria-label="Replay Vivechak logo animation"
-              >
-                <RotateCcw size={11} />
-                <span>Replay</span>
-              </button>
-            </div>
-          ) : (
-            <HeroLogoFallback />
-          )}
         </div>
 
         <div className="install-dock" id="install-bar">
           <div className="dock-tabs" role="tablist" aria-label="Install methods">
-            {INSTALL_CHANNELS.map((ch) => (
+            {visibleChannels.map((ch) => (
               <button
                 key={ch.id}
                 type="button"
@@ -386,6 +429,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                 <span className="dock-tab-text">{SHORT_LABELS[ch.id] ?? ch.label}</span>
               </button>
             ))}
+
+            <button
+              type="button"
+              id="btn-toggle-more-channels"
+              className={`dock-tab dock-more-btn mono ${showAllChannels ? 'is-open' : ''}`}
+              aria-expanded={showAllChannels}
+              onClick={() => {
+                soundEngine.playTick(740);
+                setShowAllChannels((v) => !v);
+              }}
+            >
+              <span>{showAllChannels ? 'Less' : `+${extraChannels.length} more`}</span>
+              <ChevronDown size={11} className={`dock-more-chev ${showAllChannels ? 'is-open' : ''}`} />
+            </button>
           </div>
 
           <div className="dock-cmd">
@@ -404,6 +461,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </motion.button>
           </div>
+
+          {activeChannel.id === 'skill' && (
+            <div className="dock-skill-note mono">
+              Dual-mode SKILL.md — works standalone (zero binary) or auto-upgrades with local vck MCP tools.
+            </div>
+          )}
 
           <div className="hero-hosts-strip mono" aria-label="Supported MCP editors">
             <span className="hero-hosts-lbl">WORKS IN</span>

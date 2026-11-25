@@ -1,7 +1,8 @@
 /**
  * Pure 3D Quaternion & Canonical Vivechak Monolith Extrusion Math (Zero Dependencies).
- * Shared for true 360° X/Y/Z unconstrained trackball rotation, flick momentum,
- * smooth slerp home-return, and 3D depth-sorted polygonal projection in Canvas2D.
+ * Implements exact docs/BRAND.md S=36 geometry (512x512 canvas) for true 360° X/Y/Z
+ * unconstrained trackball rotation, flick momentum, smooth slerp home-return,
+ * and depth-sorted 3D polygonal extrusion in Canvas2D (including 3-piece aperture split).
  */
 
 export type Quat = [number, number, number, number]; // [x, y, z, w]
@@ -116,54 +117,112 @@ function sampleArc(cx: number, cy: number, r: number, a0: number, a1: number, se
   return pts;
 }
 
-function sampleQuad(p0: Point2D, p1: Point2D, p2: Point2D, segs: number): Point2D[] {
+function sampleSvgArc(
+  p0: Point2D,
+  p1: Point2D,
+  r: number,
+  sweep: 0 | 1,
+  segs: number
+): Point2D[] {
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-4) return [p1];
+  const rad = Math.max(r, d * 0.5);
+  const mx = (p0.x + p1.x) * 0.5;
+  const my = (p0.y + p1.y) * 0.5;
+  const h = Math.sqrt(Math.max(0, rad * rad - (d * 0.5) * (d * 0.5)));
+  // Unit perpendicular (screen Y-down): sweep=1 places center to the right of p0->p1
+  const nx = -dy / d;
+  const ny = dx / d;
+  const sign = sweep === 1 ? 1 : -1;
+  const cx = mx + nx * h * sign;
+  const cy = my + ny * h * sign;
+  const a0 = Math.atan2(p0.y - cy, p0.x - cx);
+  let a1 = Math.atan2(p1.y - cy, p1.x - cx);
+  if (sweep === 1 && a1 < a0) a1 += Math.PI * 2;
+  if (sweep === 0 && a1 > a0) a1 -= Math.PI * 2;
   const pts: Point2D[] = [];
   for (let i = 1; i <= segs; i++) {
-    const t = i / segs;
-    const u = 1 - t;
-    pts.push({
-      x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
-      y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
-    });
+    const a = a0 + ((a1 - a0) * i) / segs;
+    pts.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad });
   }
   return pts;
 }
 
+const CX = 256;
+const CY = 246;
+const norm = (p: Point2D): Point2D => ({ x: p.x - CX, y: p.y - CY });
+
 /**
- * Sampled canonical docs/BRAND.md (S=36 on 512x512 canvas) outer & inner loops,
+ * Exact sampled canonical docs/BRAND.md (S=36 on 512x512 canvas) outer & inner loops,
+ * using true circular arcs matching the SVG A-commands (0.07° tangent continuity),
  * centered at (256, 246) with Y-down screen coordinates for Canvas2D 3D projection.
  */
 export function buildCanonicalContours(): { outer: Point2D[]; inner: Point2D[] } {
-  const CX = 256;
-  const CY = 246;
-  const norm = (p: Point2D): Point2D => ({ x: p.x - CX, y: p.y - CY });
-
   const outerRaw: Point2D[] = [
     { x: 112, y: 116.25 },
     { x: 400, y: 116.25 },
-    ...sampleArc(400, 134.25, 18, -Math.PI / 2, Math.PI / 2, 10).slice(1),
+    ...sampleArc(400, 134.25, 18, -Math.PI / 2, Math.PI / 2, 12).slice(1),
     { x: 375.8, y: 152.25 },
-    ...sampleQuad({ x: 375.8, y: 152.25 }, { x: 370.2, y: 152.25 }, { x: 366.45, y: 157.65 }, 4),
+    ...sampleSvgArc({ x: 375.8, y: 152.25 }, { x: 366.45, y: 157.65 }, 10.8, 0, 6),
     { x: 271.59, y: 321.96 },
-    ...sampleQuad({ x: 271.59, y: 321.96 }, { x: 256, y: 338.8 }, { x: 240.41, y: 321.96 }, 8),
+    ...sampleSvgArc({ x: 271.59, y: 321.96 }, { x: 240.41, y: 321.96 }, 18, 1, 10),
     { x: 145.55, y: 157.65 },
-    ...sampleQuad({ x: 145.55, y: 157.65 }, { x: 141.8, y: 152.25 }, { x: 136.2, y: 152.25 }, 4),
+    ...sampleSvgArc({ x: 145.55, y: 157.65 }, { x: 136.2, y: 152.25 }, 10.8, 0, 6),
     { x: 112, y: 152.25 },
-    ...sampleArc(112, 134.25, 18, Math.PI / 2, (Math.PI * 3) / 2, 10).slice(1, -1),
+    ...sampleArc(112, 134.25, 18, Math.PI / 2, (Math.PI * 3) / 2, 12).slice(1, -1),
   ];
 
   const innerRaw: Point2D[] = [
     { x: 315.53, y: 152.25 },
     { x: 196.47, y: 152.25 },
-    ...sampleQuad({ x: 196.47, y: 152.25 }, { x: 187.8, y: 152.25 }, { x: 190.24, y: 163.05 }, 4),
+    ...sampleSvgArc({ x: 196.47, y: 152.25 }, { x: 190.24, y: 163.05 }, 7.2, 0, 6),
     { x: 249.76, y: 266.16 },
-    ...sampleQuad({ x: 249.76, y: 266.16 }, { x: 256, y: 275.5 }, { x: 262.24, y: 266.16 }, 5),
+    ...sampleSvgArc({ x: 249.76, y: 266.16 }, { x: 262.24, y: 266.16 }, 7.2, 0, 6),
     { x: 321.76, y: 163.05 },
-    ...sampleQuad({ x: 321.76, y: 163.05 }, { x: 324.2, y: 152.25 }, { x: 315.53, y: 152.25 }, 4).slice(0, -1),
+    ...sampleSvgArc({ x: 321.76, y: 163.05 }, { x: 315.53, y: 152.25 }, 7.2, 0, 6).slice(0, -1),
   ];
 
   return {
     outer: outerRaw.map(norm),
     inner: innerRaw.map(norm),
+  };
+}
+
+/**
+ * 3-piece kinematic decomposition contours for full 360° 3D Raw Chat aperture split in Canvas2D.
+ */
+export function buildSplitContours(): { bar: Point2D[]; left: Point2D[]; right: Point2D[] } {
+  const barRaw: Point2D[] = [
+    { x: 112, y: 116.25 },
+    { x: 400, y: 116.25 },
+    ...sampleArc(400, 134.25, 18, -Math.PI / 2, Math.PI / 2, 10).slice(1),
+    { x: 112, y: 152.25 },
+    ...sampleArc(112, 134.25, 18, Math.PI / 2, (Math.PI * 3) / 2, 10).slice(1, -1),
+  ];
+
+  const leftRaw: Point2D[] = [
+    { x: 145.55, y: 154 },
+    { x: 188, y: 154 },
+    { x: 254.5, y: 270 },
+    { x: 254.5, y: 329 },
+    ...sampleSvgArc({ x: 254.5, y: 329 }, { x: 240.41, y: 321.96 }, 18, 1, 5),
+    { x: 145.55, y: 157.65 },
+  ];
+
+  const rightRaw: Point2D[] = [
+    { x: 366.45, y: 154 },
+    { x: 324, y: 154 },
+    { x: 257.5, y: 270 },
+    { x: 257.5, y: 329 },
+    ...sampleSvgArc({ x: 257.5, y: 329 }, { x: 271.59, y: 321.96 }, 18, 0, 5),
+    { x: 366.45, y: 157.65 },
+  ];
+
+  return {
+    bar: barRaw.map(norm),
+    left: leftRaw.map(norm),
+    right: rightRaw.map(norm),
   };
 }
