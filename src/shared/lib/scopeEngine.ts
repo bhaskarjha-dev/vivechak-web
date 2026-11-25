@@ -58,10 +58,10 @@ const DECISION_SIGNALS = [
 const COMP_OPERATORS = [' vs ', ' vs. ', ' versus '];
 
 const PROJECT_SIGNALS = [
-  'startup idea', 'new startup', 'build an app', 'build a platform', 'building a platform',
+  'startup idea', 'new startup', 'build a ', 'build an ', 'building a ', 'building an ',
   'uber for', 'pipeline for', 'new business', 'new venture', 'new product',
   'business plan', 'venture research', 'launching a', 'launching an', 'business project',
-  'architect a', 'architect an', 'greenfield', 'platform from scratch',
+  'architect ', 'design a ', 'design an ', 'greenfield', 'platform from scratch', 'from scratch',
 ];
 
 export function classifyPrompt(raw: string): ScopeClassification {
@@ -130,16 +130,16 @@ export function classifyPrompt(raw: string): ScopeClassification {
     if (lower.includes(sig)) return buildProject(safeQ, `Full architecture signal: "${sig}"`);
   }
   for (const sig of COMP_QUESTIONS) {
-    if (lower.includes(sig)) return buildComparison(safeQ, `Comparison question signal: "${sig}"`);
+    if (lower.includes(sig)) return buildComparison(safeQ, `Comparison question signal: "${sig.trim()}"`);
   }
   for (const sig of DECISION_SIGNALS) {
-    if (lower.includes(sig)) return buildDecision(safeQ, `Decision fork signal: "${sig}"`);
+    if (lower.includes(sig)) return buildDecision(safeQ, `Decision fork signal: "${sig.trim()}"`);
   }
   for (const sig of COMP_OPERATORS) {
     if (lower.includes(sig)) return buildComparison(safeQ, `Bounded operator: "${sig.trim()}"`);
   }
   for (const sig of PROJECT_SIGNALS) {
-    if (lower.includes(sig)) return buildProject(safeQ, `Greenfield/platform signal: "${sig}"`);
+    if (lower.includes(sig)) return buildProject(safeQ, `Greenfield/platform signal: "${sig.trim()}"`);
   }
 
   return buildProject(safeQ, 'Default fallback to Project Scope for open architectural vision');

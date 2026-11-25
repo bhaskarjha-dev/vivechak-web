@@ -58,11 +58,11 @@ function inferRnbxFromText(text: string): RnbxProfile {
   return { r: 0, n: 1, b: 1, x: 0 };
 }
 
-const ZONES: { id: ScopeResult; code: string; name: string; speed: string; pos: number }[] = [
-  { id: 'comparison', code: 'C-NNN', name: 'Comparison', speed: '~5 min · Matrix', pos: 12.5 },
-  { id: 'decision', code: 'D-NNN', name: 'Decision', speed: '~30 min · ADR', pos: 37.5 },
-  { id: 'project', code: 'FAD', name: 'Project', speed: 'Full DAG · FAD', pos: 62.5 },
-  { id: 'out_of_scope', code: 'SKIP', name: 'Code Directly', speed: '0 MCP tools', pos: 87.5 },
+const ZONES: { id: ScopeResult; code: string; name: string; speed: string; pos: number; bars: number }[] = [
+  { id: 'comparison', code: 'C-NNN', name: 'Comparison', speed: '~5 min · Matrix', pos: 12.5, bars: 1 },
+  { id: 'decision', code: 'D-NNN', name: 'Decision', speed: '~30 min · ADR', pos: 37.5, bars: 2 },
+  { id: 'project', code: 'FAD', name: 'Project', speed: 'Full DAG · FAD', pos: 62.5, bars: 4 },
+  { id: 'out_of_scope', code: 'SKIP', name: 'Code Directly', speed: '0 MCP tools', pos: 87.5, bars: 0 },
 ];
 
 const RNBX_LABELS: Record<keyof RnbxProfile, { code: string; label: string; hint: string }> = {
@@ -171,7 +171,7 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({ onSendToPromptBu
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
           <div>
-            <span className="eyebrow-dark mono">02 · REVERSIBILITY-CALIBRATED RIGOR</span>
+            <span className="eyebrow-dark mono">02 · RIGHT-SIZED RIGOR</span>
             <h2 className="dark-title">Match rigor to reversal cost.</h2>
             <p className="dark-sub">
               Fast for reversible choices. Relentless for one-way bets. Zero overhead for routine code.
@@ -220,6 +220,11 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({ onSendToPromptBu
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
+              <div className="cal-step-kicker mono">
+                <span>STEP 1 · WHAT ARE YOU DECIDING?</span>
+                <span className="cal-step-sub">Picks scope, session count &amp; time budget</span>
+              </div>
+
               <div className="spotlight-box">
                 <div className="spotlight-row">
                   <Sparkles size={15} className="spotlight-ico" />
@@ -269,15 +274,34 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({ onSendToPromptBu
                   />
                 </div>
                 <div className="spec-cols">
-                  {ZONES.map((z) => (
-                    <div
+                  {ZONES.map((z, zIdx) => (
+                    <button
                       key={z.id}
+                      type="button"
                       className={`spec-col ${z.id === cls.scope ? 'active' : ''} ${z.id === 'out_of_scope' ? 'is-skip' : ''}`}
+                      onClick={() => {
+                        const sp = PRESET_PROMPTS[zIdx];
+                        if (!sp) return;
+                        if (sp.rnbx.x === 3) soundEngine.playReject();
+                        else soundEngine.playTick(760);
+                        setPrompt(sp.text);
+                        setRnbx(sp.rnbx);
+                      }}
                     >
-                      <span className="mono spec-code">{z.code}</span>
+                      <div className="spec-col-top">
+                        <span className="mono spec-code">{z.code}</span>
+                        <span className="spec-effort" aria-hidden="true">
+                          {[0, 1, 2, 3].map((b) => (
+                            <span
+                              key={b}
+                              className={`spec-effort-seg ${b < z.bars ? 'is-on' : ''} ${z.id === 'out_of_scope' ? 'is-skip' : ''}`}
+                            />
+                          ))}
+                        </span>
+                      </div>
                       <strong>{z.name}</strong>
                       <span className="mono spec-speed">{z.speed}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -317,6 +341,11 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({ onSendToPromptBu
                     ZERO CEREMONY · SKIP VIVECHAK &amp; WRITE CODE DIRECTLY
                   </div>
                 )}
+              </div>
+
+              <div className="cal-step-kicker is-step2 mono">
+                <span>STEP 2 · HOW HARD IS IT TO REVERSE? (R / N / B / X)</span>
+                <span className="cal-step-sub">Sets rigor: fast spike vs. red-team + human sign-off</span>
               </div>
 
               <div className="rnbx-compact">
@@ -434,6 +463,10 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({ onSendToPromptBu
                   ))}
                 </div>
               </div>
+
+              <p className="wep-explain">
+                Shift top weights by <strong>±20%</strong> — see instantly whether the winner holds or flips.
+              </p>
 
               <div className="wep-visual-race">
                 <div className="wep-bars-col">

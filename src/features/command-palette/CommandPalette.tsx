@@ -59,7 +59,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       ...DOC_PAGES.map((p) => ({
         id: `doc-${p.slug}`,
         group: 'Docs',
-        label: `${p.shortTitle} — ${p.title}`,
+        label: p.title.startsWith(p.shortTitle) ? p.title : `${p.shortTitle} — ${p.title}`,
         hint: `/docs/${p.slug}`,
         action: goTo(`/docs/${p.slug}`),
       })),
@@ -103,14 +103,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           onClose();
         },
       },
-      { id: 'n-shift', group: 'Home', label: '01 · The Epistemic Shift (4 Real Scenarios)', hint: '/#shift', action: goTo('/#shift') },
+      { id: 'n-shift', group: 'Home', label: '01 · Before vs. After (4 Real Scenarios)', hint: '/#shift', action: goTo('/#shift') },
       { id: 'n-cal', group: 'Home', label: '02 · Scope Calibrator & WEP ±20% Lab', hint: '/#calibrate', action: goTo('/#calibrate') },
       { id: 'n-gate', group: 'Home', label: '03 · Live Phase 0 Exit Gate & TTY Sign-Off', hint: '/#gate', action: goTo('/#gate') },
       { id: 'n-arch', group: 'Home', label: '04 · Live SVG DAG, Git Files & 9 MCP Tools', hint: '/#architecture', action: goTo('/#architecture') },
       { id: 'n-setup', group: 'Home', label: '05 · 10 Verified Hosts & Prompt Builder', hint: '/#setup', action: goTo('/#setup') },
-      { id: 'c-curl', group: 'Install', label: 'Copy macOS / Linux curl installer', hint: 'install.sh', action: copy(INSTALL_CHANNELS[0].command, 'curl installer') },
-      { id: 'c-brew', group: 'Install', label: 'Copy Homebrew cask command', hint: 'brew', action: copy(INSTALL_CHANNELS[1].command, 'brew command') },
-      { id: 'c-npx', group: 'Install', label: 'Copy zero-install npx vivechak serve', hint: 'npx', action: copy(INSTALL_CHANNELS[2].command, 'npx serve') },
+      { id: 'c-curl', group: 'Install', label: 'Copy macOS / Linux curl installer', hint: 'install.sh', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'shell')?.command ?? INSTALL_CHANNELS[0].command, 'curl installer') },
+      { id: 'c-brew', group: 'Install', label: 'Copy Homebrew cask command', hint: 'brew', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'brew')?.command ?? INSTALL_CHANNELS[1].command, 'brew command') },
+      { id: 'c-npx', group: 'Install', label: 'Copy zero-install npx vivechak serve', hint: 'npx', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'npx')?.command ?? 'npx -y vivechak serve', 'npx serve') },
       ...MCP_TOOLS.map((t) => ({
         id: `t-${t.name}`,
         group: 'MCP Tool',

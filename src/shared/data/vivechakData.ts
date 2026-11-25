@@ -89,7 +89,7 @@ export const INSTALL_CHANNELS: InstallChannel[] = [
     label: 'Agent Skill',
     platform: 'agentskills.io',
     command: 'npx skills add bhaskarjha-dev/vivechak',
-    note: 'Installs the canonical SKILL.md playbook for Claude Code, Cursor, Antigravity, OpenCode.',
+    note: 'Dual-mode SKILL.md playbook — works standalone (zero binary) or auto-upgrades with local vck MCP tools.',
   },
   {
     id: 'nix',
@@ -126,7 +126,7 @@ export const EVIDENCE_GRADES: EvidenceGrade[] = [
     provenance: ['fetched', 'human-provided'],
     gateImpact: 'Satisfies G6 & G7',
     barWidth: 100,
-    example: '[E-A: fetched · clickhouse.com/docs/engines/table-engines/mergetree-family]',
+    example: '[A · corroborated · fresh · direct · fetched](https://clickhouse.com/docs/engines/table-engines/mergetree-family)',
   },
   {
     grade: 'B',
@@ -136,7 +136,7 @@ export const EVIDENCE_GRADES: EvidenceGrade[] = [
     provenance: ['fetched', 'cached'],
     gateImpact: 'Satisfies G6 & G7',
     barWidth: 82,
-    example: '[E-B: fetched · benchmark.clickhouse.com (c6a.4xlarge reproducible run)]',
+    example: '[B · corroborated · fresh · direct · fetched](https://benchmark.clickhouse.com/)',
   },
   {
     grade: 'C',
@@ -146,7 +146,7 @@ export const EVIDENCE_GRADES: EvidenceGrade[] = [
     provenance: ['fetched', 'cached'],
     gateImpact: 'Advisory only',
     barWidth: 56,
-    example: '[E-C: fetched · vendor cloud whitepaper — requires independent corroboration]',
+    example: '[C · single · fresh · direct · fetched](https://vendor.example.com/whitepaper)',
   },
   {
     grade: 'D',
@@ -156,7 +156,7 @@ export const EVIDENCE_GRADES: EvidenceGrade[] = [
     provenance: ['fetched', 'cached', 'recalled'],
     gateImpact: 'Blocked on One-Way Doors',
     barWidth: 32,
-    example: '[E-D: recalled · unverified LLM memory — auto-capped & blocked by G6]',
+    example: '[D · single · stale · indirect · recalled] — model memory hard-capped at Grade D',
   },
   {
     grade: 'E',
@@ -165,7 +165,7 @@ export const EVIDENCE_GRADES: EvidenceGrade[] = [
     provenance: ['recalled', 'unverified'],
     gateImpact: 'Blocked on One-Way Doors',
     barWidth: 14,
-    example: '[E-E: unverified · "ClickHouse probably scales fine" — fails G6/G7]',
+    example: '[E · single · stale · indirect · recalled] — fails G6 & G7 on One-Way Doors',
   },
 ];
 
@@ -506,24 +506,68 @@ export const MCP_PROMPTS = [
     title: 'Compare Options (WEP Matrix)',
     args: 'options (required), criteria, context',
     flow: 'Calls vivechak_start(scope="comparison") → web search → vivechak_save(kind="comparison").',
+    sampleRequest: `// Client MCP Prompt Request (internal/mcp/prompts.go)
+{
+  "method": "prompts/get",
+  "params": {
+    "name": "compare",
+    "arguments": {
+      "options": "Pino vs Winston vs Bunyan",
+      "criteria": "event-loop latency, GC pressure, transports",
+      "context": "Node.js API gateway handling 15k req/s"
+    }
+  }
+}`,
   },
   {
     name: '/decision',
     title: 'Architectural Decision (ADR)',
     args: 'question (required), context',
     flow: 'Allocates D-NNN → 1–3 session plan → vivechak_record_decision → red_team → vck signoff.',
+    sampleRequest: `// Client MCP Prompt Request (internal/mcp/prompts.go)
+{
+  "method": "prompts/get",
+  "params": {
+    "name": "decision",
+    "arguments": {
+      "question": "Migrate 25M events/day analytics from PostgreSQL to ClickHouse?",
+      "context": "30-day p95 SLA < 500ms; 5-person team with zero ClickHouse ops experience"
+    }
+  }
+}`,
   },
   {
     name: '/project',
     title: 'Project Pipeline (Full FAD)',
     args: 'vision (required), constraints',
     flow: 'Generates yaml vivechak-plan DAG → loops vivechak_next/save → FAD.md → vivechak_gate.',
+    sampleRequest: `// Client MCP Prompt Request (internal/mcp/prompts.go)
+{
+  "method": "prompts/get",
+  "params": {
+    "name": "project",
+    "arguments": {
+      "vision": "Katha: offline-first collaborative AI novel-writing platform with 50k-node story graph",
+      "constraints": "EU GDPR right-to-erasure, <$1,500/mo launch infra, 2-engineer team"
+    }
+  }
+}`,
   },
   {
     name: '/gate',
     title: 'Phase 0 Pre-Codebase Exit Gate',
     args: 'decision (optional D-ID)',
     flow: 'Evaluates G1–G12 across Track A & Track B; guides exact remediation or vck signoff.',
+    sampleRequest: `// Client MCP Prompt Request (internal/mcp/prompts.go)
+{
+  "method": "prompts/get",
+  "params": {
+    "name": "gate",
+    "arguments": {
+      "decision": "D-001"
+    }
+  }
+}`,
   },
 ];
 
@@ -561,7 +605,10 @@ export const HOST_PRESETS: HostPreset[] = [
   "mcpServers": {
     "vivechak": {
       "command": "/usr/local/bin/vck",
-      "args": ["serve"]
+      "args": ["serve"],
+      "env": {
+        "VCK_PROJECT_ROOT": "\${workspaceFolder}"
+      }
     }
   }
 }`,
@@ -592,9 +639,11 @@ export const HOST_PRESETS: HostPreset[] = [
     snippet: `{
   "servers": {
     "vivechak": {
-      "type": "stdio",
       "command": "/usr/local/bin/vck",
-      "args": ["serve"]
+      "args": ["serve"],
+      "env": {
+        "VCK_PROJECT_ROOT": "\${workspaceFolder}"
+      }
     }
   }
 }`,
@@ -641,10 +690,8 @@ export const HOST_PRESETS: HostPreset[] = [
     snippet: `{
   "context_servers": {
     "vivechak": {
-      "command": {
-        "path": "/usr/local/bin/vck",
-        "args": ["serve"]
-      }
+      "command": "/usr/local/bin/vck",
+      "args": ["serve"]
     }
   }
 }`,
@@ -660,7 +707,10 @@ export const HOST_PRESETS: HostPreset[] = [
   "mcpServers": {
     "vivechak": {
       "command": "/usr/local/bin/vck",
-      "args": ["serve"]
+      "args": ["serve"],
+      "env": {
+        "VCK_PROJECT_ROOT": "\${workspaceFolder}"
+      }
     }
   }
 }`,
@@ -709,10 +759,11 @@ export const HOST_PRESETS: HostPreset[] = [
   vivechak:
     name: vivechak
     type: stdio
-    cmd: /usr/local/bin/vck
+    cmd: "/usr/local/bin/vck"
     args:
       - serve
-    enabled: true`,
+    enabled: true
+    timeout: 300`,
   },
 ];
 
@@ -1530,7 +1581,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Vivechak (vck)
-        run: curl -fsSL https://raw.githubusercontent.com/bhaskarjha-dev/vivechak/main/install.sh | sh
+        run: curl -fsSL https://vivechak.bhaskarjha.dev/install.sh | bash
       - name: Audit workspace & enforce Track A / Track B gate
         run: |
           vck doctor

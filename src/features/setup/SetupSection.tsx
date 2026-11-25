@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
@@ -16,7 +16,6 @@ import {
   GITHUB_ACTIONS_SNIPPET,
   HOST_PRESETS,
   SEVEN_STEP_LADDER,
-  buildCustomPrompt,
 } from '@/shared/data/vivechakData';
 import { copyText } from '@/shared/lib/clipboard';
 import { downloadTextFile } from '@/shared/lib/download';
@@ -24,9 +23,7 @@ import { renderHighlightedCode } from '@/shared/lib/highlight';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
 import type { PromptBridgePayload } from '@/features/calibration/CalibrationLab';
-
-type OutputMode = 'cli' | 'manual' | 'agents' | 'ci';
-type PromptScope = 'comparison' | 'decision' | 'project';
+import { useSetupWizard } from './useSetupWizard';
 
 interface SetupSectionProps {
   bridgedPrompt?: PromptBridgePayload | null;
@@ -43,23 +40,23 @@ const TRUST_PILLARS = [
 const FAQ_ITEMS = [
   {
     q: 'When should I NOT use Vivechak?',
-    a: 'Skip Vivechak for routine coding, bug fixes, syntax questions, and local refactors. Invoke it only for hard-to-reverse choices: datastores, protocols, security boundaries, or greenfield architecture.',
+    a: 'Skip it for bug fixes, syntax help, and routine refactors. Use it only for hard-to-reverse bets: datastores, protocols, security boundaries, or greenfield design.',
   },
   {
     q: 'Does Vivechak call external LLMs or send telemetry?',
-    a: 'Never. It is a ~9 MB local static Go binary with zero outbound network requests, zero telemetry, and zero hidden databases. Your existing coding agent researches; Vivechak structures, hashes, and gates files in research/.',
+    a: 'Never. It is a ~9 MB local Go binary with zero outbound calls, zero telemetry, and zero hidden databases. Your agent researches; Vivechak structures, hashes, and gates research/.',
   },
   {
     q: 'How does human sign-off stop AI rubber-stamping?',
-    a: 'One-Way Door ADRs require Grade A/B primary URLs, rejected alternatives, a SHA-256 red-team record (G10), and interactive human /dev/tty attestation (G11). Agents setting human_reviewed: true are rejected with E-HUMAN-ONLY-FIELD. Note: Vivechak checks structure, hash parity, and typed attestation — it never fetches external URLs itself.',
+    a: 'One-Way Door ADRs require Grade A/B URLs, rejected alternatives, a SHA-256 red-team file (G10), and typed human /dev/tty sign-off (G11). Agents trying to set human_reviewed: true are rejected with E-HUMAN-ONLY-FIELD.',
   },
   {
-    q: 'Can I try Vivechak without installing anything?',
-    a: 'Yes — run ephemerally via `npx -y vivechak serve` or `uvx vck serve`, or use the Prompt Builder tab above to generate a custom ready-to-paste prompt for Claude, ChatGPT, or Gemini web chat.',
+    q: 'Can I try Vivechak without installing the binary?',
+    a: 'Yes — install the standalone Agent Skill (`npx skills add bhaskarjha-dev/vivechak`), run ephemerally via `npx -y vivechak serve` / `uvx vck serve`, or paste from the Zero-Install Prompt tab above.',
   },
   {
     q: 'Can Vivechak modify my application source code?',
-    a: 'No. Every write is strictly confined to research/ via Go 1.26 os.Root and a 7-step fail-closed workspace ladder that refuses /, $HOME, and system directories.',
+    a: 'No. Writes are jailed strictly inside research/ via Go 1.26 os.Root and a 7-step fail-closed ladder that blocks /, $HOME, and system directories.',
   },
 ];
 
@@ -70,90 +67,30 @@ function handleGlowMove(e: React.PointerEvent<HTMLDivElement>) {
 }
 
 export const SetupSection: React.FC<SetupSectionProps> = ({ bridgedPrompt, bridgedHost }) => {
-  const [hostId, setHostId] = useState(HOST_PRESETS[0].id);
-  const [outputMode, setOutputMode] = useState<OutputMode>('cli');
-  const [cliDryRun, setCliDryRun] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [ladderOpen, setLadderOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  // Live Prompt Builder state (auto-populated from Calibration Lab bridge or directly editable!)
-  const [builderScope, setBuilderScope] = useState<PromptScope>('decision');
-  const [builderQuestion, setBuilderQuestion] = useState(
-    'Should we adopt PostgreSQL + pgvector or Qdrant for 10M-vector hybrid RAG search?'
-  );
-  const [builderOptions, setBuilderOptions] = useState(
-    'Qdrant, PostgreSQL + pgvector, Pinecone Serverless'
-  );
-  const [builderContext, setBuilderContext] = useState(
-    '5-person backend team; strict tenant ACL joins; <40ms p99 under $900/mo'
-  );
-  const [builderDoor, setBuilderDoor] = useState<'one-way' | 'two-way'>('one-way');
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('vck_host_preset');
-      if (saved && HOST_PRESETS.some((h) => h.id === saved)) {
-        setHostId(saved);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!bridgedHost) return;
-    if (HOST_PRESETS.some((h) => h.id === bridgedHost.hostId)) {
-      setHostId(bridgedHost.hostId);
-      setOutputMode('cli');
-      try {
-        localStorage.setItem('vck_host_preset', bridgedHost.hostId);
-      } catch {
-        // ignore
-      }
-    }
-  }, [bridgedHost]);
-
-  useEffect(() => {
-    if (!bridgedPrompt) return;
-    setBuilderScope(bridgedPrompt.scope);
-    setBuilderQuestion(bridgedPrompt.question);
-    setBuilderDoor(bridgedPrompt.doorType);
-    // Smartly extract contender options from "A vs B" or "from A to B" prompts so stale defaults never leak
-    const vsMatch = bridgedPrompt.question.match(
-      /(?:compare|choose|evaluate|between)?\s*([A-Za-z0-9.+_-]+(?:\s+[A-Za-z0-9.+_-]+)?)\s+(?:vs\.?|versus|or|→|to)\s+([A-Za-z0-9.+_-]+(?:\s+[A-Za-z0-9.+_-]+)?)/i
-    );
-    if (vsMatch) {
-      setBuilderOptions(`${vsMatch[1].trim()}, ${vsMatch[2].trim()}`);
-    }
-    setOutputMode('manual');
-    document.getElementById('setup')?.scrollIntoView({ behavior: 'smooth' });
-    showToast(`Prompt Builder pre-filled (${bridgedPrompt.scope.toUpperCase()})`);
-  }, [bridgedPrompt]);
-
-  const selectHost = (id: string) => {
-    soundEngine.playTick(740);
-    setHostId(id);
-    try {
-      localStorage.setItem('vck_host_preset', id);
-    } catch {
-      // ignore
-    }
-  };
-
-  const activeHost = HOST_PRESETS.find((h) => h.id === hostId) ?? HOST_PRESETS[0];
-
-  const customPromptText = useMemo(
-    () =>
-      buildCustomPrompt({
-        scope: builderScope,
-        question: builderQuestion,
-        options: builderOptions,
-        context: builderContext,
-        doorType: builderDoor,
-      }),
-    [builderScope, builderQuestion, builderOptions, builderContext, builderDoor]
-  );
+  const {
+    hostId,
+    selectHost,
+    outputMode,
+    setOutputMode,
+    cliDryRun,
+    setCliDryRun,
+    copiedKey,
+    setCopiedKey,
+    ladderOpen,
+    setLadderOpen,
+    openFaq,
+    setOpenFaq,
+    builderScope,
+    setBuilderScope,
+    builderQuestion,
+    setBuilderQuestion,
+    builderOptions,
+    setBuilderOptions,
+    builderContext,
+    setBuilderContext,
+    activeHost,
+    customPromptText,
+  } = useSetupWizard({ bridgedPrompt, bridgedHost });
 
   const copy = async (key: string, label: string, text: string) => {
     const ok = await copyText(text);
@@ -169,7 +106,7 @@ export const SetupSection: React.FC<SetupSectionProps> = ({ bridgedPrompt, bridg
       `$ vck setup ${activeHost.shortcut} --dry-run
 [dry-run] Detected host preset : ${activeHost.name} (${activeHost.format.toUpperCase()})
 [dry-run] Target config path   : ${activeHost.configPath}
-[dry-run] Backup strategy      : ${activeHost.configPath}.bak.<timestamp>
+[dry-run] Backup strategy      : ${activeHost.configPath}.vivechak-bak-<timestamp>
 [dry-run] Merge action         : upsert "${activeHost.serverKey}.vivechak" (preserves existing servers)
 [dry-run] Binary resolved      : /usr/local/bin/vck serve
 [dry-run] Status               : SAFE TO APPLY — 0 files modified in dry-run`,
@@ -229,64 +166,70 @@ export const SetupSection: React.FC<SetupSectionProps> = ({ bridgedPrompt, bridg
           <span className="eyebrow-dark mono">05 · SETUP &amp; PROMPT WORKBENCH</span>
           <h2 className="dark-title">Wire your editor — or paste now.</h2>
           <p className="dark-sub">
-            Auto-merge into 10 verified MCP hosts, generate a bespoke zero-install prompt, or drop the CI gate into GitHub Actions.
+            1-command MCP setup, standalone Agent Skill, zero-install prompt, or GitHub Actions CI.
           </p>
         </motion.div>
 
-        <div className="host-pills-bar" role="tablist" aria-label="10 Verified MCP Hosts">
-          {HOST_PRESETS.map((h) => (
+        <div className="setup-path-bar" role="tablist" aria-label="Choose how to adopt Vivechak">
+          {(
+            [
+              ['cli', '1. Wire Editor (MCP)'],
+              ['manual', '2. Zero-Install Prompt'],
+              ['agents', '3. AGENTS.md & Skill'],
+              ['ci', '4. GitHub Actions CI'],
+            ] as const
+          ).map(([id, label]) => (
             <button
-              key={h.id}
+              key={id}
               type="button"
               role="tab"
-              aria-selected={h.id === hostId}
-              id={`host-preset-${h.id}`}
-              className={`host-pill-btn ${h.id === hostId ? 'active' : ''}`}
+              aria-selected={outputMode === id}
+              id={`setup-mode-${id}`}
+              className={`setup-path-btn mono ${outputMode === id ? 'active' : ''}`}
               onClick={() => {
-                selectHost(h.id);
-                setOutputMode('cli');
+                soundEngine.playTick(760);
+                setOutputMode(id);
               }}
             >
-              {h.id === hostId && (
+              {outputMode === id && (
                 <motion.span
-                  layoutId="hostPillBg"
+                  layoutId="setupPathBg"
                   className="host-pill-bg"
                   transition={{ type: 'spring', stiffness: 440, damping: 34 }}
                 />
               )}
-              <span className="host-pill-lbl">{h.name}</span>
+              <span className="host-pill-lbl">{label}</span>
             </button>
           ))}
         </div>
 
+        {outputMode === 'cli' && (
+          <div className="host-pills-bar" role="tablist" aria-label="10 Verified MCP Hosts">
+            {HOST_PRESETS.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                role="tab"
+                aria-selected={h.id === hostId}
+                id={`host-preset-${h.id}`}
+                className={`host-pill-btn ${h.id === hostId ? 'active' : ''}`}
+                onClick={() => selectHost(h.id)}
+              >
+                {h.id === hostId && (
+                  <motion.span
+                    layoutId="hostPillBg"
+                    className="host-pill-bg"
+                    transition={{ type: 'spring', stiffness: 440, damping: 34 }}
+                  />
+                )}
+                <span className="host-pill-lbl">{h.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="setup-split">
           <div className="setup-left ambient-glow" onPointerMove={handleGlowMove}>
-            <div className="setup-mode-tabs" role="tablist" aria-label="Output format">
-              {(
-                [
-                  ['cli', 'CLI Setup'],
-                  ['manual', 'Prompt Builder'],
-                  ['agents', 'AGENTS.md'],
-                  ['ci', 'GitHub Actions'],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={outputMode === id}
-                  id={`setup-mode-${id}`}
-                  className={`setup-mini-tab mono ${outputMode === id ? 'active' : ''}`}
-                  onClick={() => {
-                    soundEngine.playTick(760);
-                    setOutputMode(id);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
             {outputMode === 'manual' ? (
               <div className="prompt-builder-form">
                 <div className="builder-scope-row">
@@ -350,6 +293,68 @@ export const SetupSection: React.FC<SetupSectionProps> = ({ bridgedPrompt, bridg
                   Paste into Claude, ChatGPT, or Gemini with Web Search ON — zero installation required.
                 </div>
               </div>
+            ) : outputMode === 'agents' ? (
+              <>
+                <div className="setup-info-card">
+                  <div className="setup-label mono">DROP-IN REPOSITORY RULE</div>
+                  <p className="setup-info-copy">
+                    Drop into <code>AGENTS.md</code> or <code>CLAUDE.md</code> — agents invoke Vivechak on one-way bets and skip routine coding.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="setup-label mono">DUAL-MODE AGENT SKILL (WORKS WITH OR WITHOUT MCP)</div>
+                  <div className="setup-cmd-row">
+                    <span className="dock-prompt mono">$</span>
+                    <code className="mono">npx skills add bhaskarjha-dev/vivechak</code>
+                    <button
+                      type="button"
+                      className={`dock-copy mono ${copiedKey === 'skill' ? 'copied' : ''}`}
+                      onClick={() => copy('skill', 'Agent Skill install', 'npx skills add bhaskarjha-dev/vivechak')}
+                    >
+                      {copiedKey === 'skill' ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedKey === 'skill' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <div className="builder-tip mono" style={{ marginTop: '0.45rem' }}>
+                    Works standalone (zero binary) or auto-upgrades when the local vck MCP server is connected.
+                  </div>
+                </div>
+              </>
+            ) : outputMode === 'ci' ? (
+              <>
+                <div>
+                  <div className="setup-label mono">HEADLESS CI MERGE GATE</div>
+                  <div className="setup-cmd-row">
+                    <span className="dock-prompt mono">$</span>
+                    <code className="mono">vck doctor &amp;&amp; vck gate --track all</code>
+                    <button
+                      type="button"
+                      className={`dock-copy mono ${copiedKey === 'ci' ? 'copied' : ''}`}
+                      onClick={() => copy('ci', 'CI gate command', 'vck doctor && vck gate --track all')}
+                    >
+                      {copiedKey === 'ci' ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedKey === 'ci' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="setup-meta mono">
+                  <span>WORKFLOW PATH</span>
+                  <strong>.github/workflows/vivechak-gate.yml</strong>
+                </div>
+
+                <div className="setup-exit-grid mono">
+                  <div className="setup-exit-row is-pass">
+                    <strong>EXIT 0</strong>
+                    <span>All Track A &amp; B rules, citations &amp; SHA-256 hashes verified.</span>
+                  </div>
+                  <div className="setup-exit-row is-fail">
+                    <strong>EXIT 1</strong>
+                    <span>Blocks PR on missing URLs, unchallenged ADR, tamper, or missing sign-off.</span>
+                  </div>
+                </div>
+              </>
             ) : (
               <>
                 <div>
@@ -369,24 +374,15 @@ export const SetupSection: React.FC<SetupSectionProps> = ({ bridgedPrompt, bridg
                 </div>
 
                 <div className="setup-meta mono">
-                  <span>PATH</span>
+                  <span>CONFIG PATH</span>
                   <strong>{activeHost.configPath}</strong>
                 </div>
 
-                <div className="setup-ci-box">
-                  <div className="setup-label mono">GITHUB ACTIONS / CI MERGE GATE</div>
-                  <div className="setup-cmd-row">
-                    <span className="dock-prompt mono">$</span>
-                    <code className="mono">vck doctor &amp;&amp; vck gate --track all</code>
-                    <button
-                      type="button"
-                      className={`dock-copy mono ${copiedKey === 'ci' ? 'copied' : ''}`}
-                      onClick={() => copy('ci', 'CI gate command', 'vck doctor && vck gate --track all')}
-                    >
-                      {copiedKey === 'ci' ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{copiedKey === 'ci' ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  </div>
+                <div className="setup-info-card">
+                  <div className="setup-label mono">SAFE BY DEFAULT</div>
+                  <p className="setup-info-copy">
+                    Upserts only <code>vivechak</code>, preserves existing MCP servers, and saves a <code>.vivechak-bak</code> backup. Toggle <strong>--dry-run</strong> to preview.
+                  </p>
                 </div>
               </>
             )}

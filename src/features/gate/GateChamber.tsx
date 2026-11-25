@@ -1,67 +1,42 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Lock, Play, RotateCcw, ShieldAlert, ShieldCheck, Unlock } from 'lucide-react';
 import { navigate } from '@/shared/lib/router';
-import { sha256Hex } from '@/shared/lib/sha256';
 import { soundEngine } from '@/shared/lib/sound';
 import { GateVaultVisual } from './GateVaultVisual';
+import {
+  INITIAL_GATE_STATE,
+  computeGateHashes,
+  useGateStateMachine,
+  type TermLine,
+} from './useGateStateMachine';
 import { Magnetic } from '@/shared/components/Magnetic';
 
-interface GateState {
-  evidenceGrounded: boolean;
-  placeholdersFixed: boolean;
-  redTeamRan: boolean;
-  redTeamHash: string;
-  signedOff: boolean;
-  reviewerName: string;
-  reviewedHash: string;
-  outcomeTampered: boolean;
-}
-
-interface TermLine {
-  id: number;
-  kind: 'cmd' | 'pass' | 'fail' | 'warn' | 'hash' | 'muted';
-  text: string;
-}
-
-const INITIAL_STATE: GateState = {
-  evidenceGrounded: false,
-  placeholdersFixed: false,
-  redTeamRan: false,
-  redTeamHash: '',
-  signedOff: false,
-  reviewerName: 'Jane Doe',
-  reviewedHash: '',
-  outcomeTampered: false,
-};
-
-async function computeHashes(s: Pick<GateState, 'evidenceGrounded' | 'placeholdersFixed' | 'outcomeTampered'>) {
-  const outcomeBody = s.outcomeTampered
-    ? `## Decision Outcome\nAdopt ClickHouse WITHOUT Vector batching buffer.\n## Rejected\n${s.placeholdersFixed ? 'TimescaleDB; DynamoDB' : '[Stub]'}`
-    : `## Decision Outcome\nAdopt ClickHouse Cloud + Vector >=10k buffer [A · fetched].\n## Rejected\n${s.placeholdersFixed ? 'TimescaleDB; DynamoDB' : '[Stub]'}`;
-  const fullAdr = `id:D-001|ev:${s.evidenceGrounded}|ph:${s.placeholdersFixed}|${outcomeBody}`;
-  const [outcomeHash, adrHash] = await Promise.all([sha256Hex(outcomeBody), sha256Hex(fullAdr)]);
-  return { outcomeHash, adrHash };
-}
-
 export const GateChamber: React.FC = () => {
-  const [state, setState] = useState<GateState>(INITIAL_STATE);
-  const stateRef = useRef<GateState>(INITIAL_STATE);
-  stateRef.current = state;
-
-  const [outcomeHash, setOutcomeHash] = useState('4b91e0a3c2f8d714a09b3e12f8c67120e4d91a0f');
-  const [adrHash, setAdrHash] = useState('9a72c5e81f4d03b6e91c4a20d87f31b5c0a42e11');
-  const [activeRuleId, setActiveRuleId] = useState('G10');
-  const [ttyOpen, setTtyOpen] = useState(false);
-  const [reviewerInput, setReviewerInput] = useState('Jane Doe');
-  const [ttyConfirmInput, setTtyConfirmInput] = useState('');
-  const [autoPlaying, setAutoPlaying] = useState(false);
-  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
-  const [termLines, setTermLines] = useState<TermLine[]>([
-    { id: 1, kind: 'cmd', text: '$ vck gate --decision D-001' },
-    { id: 2, kind: 'fail', text: 'FAIL (exit 1) · 6 blocking Track B rules: G6 G7 G8 G9 G10 G11' },
-    { id: 3, kind: 'muted', text: 'Click Auto-Play Demo or toggle steps 01–04 to verify live SHA-256.' },
-  ]);
+  const {
+    state,
+    setState,
+    stateRef,
+    outcomeHash,
+    setOutcomeHash,
+    adrHash,
+    setAdrHash,
+    activeRuleId,
+    setActiveRuleId,
+    ttyOpen,
+    setTtyOpen,
+    reviewerInput,
+    setReviewerInput,
+    ttyConfirmInput,
+    setTtyConfirmInput,
+    autoPlaying,
+    setAutoPlaying,
+    hoveredStep,
+    setHoveredStep,
+    termLines,
+    setTermLines,
+    reset: resetMachine,
+  } = useGateStateMachine();
 
   const termBodyRef = useRef<HTMLDivElement | null>(null);
   const nextId = useRef(20);
@@ -88,21 +63,6 @@ export const GateChamber: React.FC = () => {
       ...entries.map((e) => ({ ...e, id: nextId.current++ })),
     ]);
   };
-
-  const { evidenceGrounded, placeholdersFixed, outcomeTampered } = state;
-  useEffect(() => {
-    let alive = true;
-    void computeHashes({ evidenceGrounded, placeholdersFixed, outcomeTampered }).then(
-      ({ outcomeHash: oh, adrHash: ah }) => {
-        if (!alive) return;
-        setOutcomeHash(oh);
-        setAdrHash(ah);
-      }
-    );
-    return () => {
-      alive = false;
-    };
-  }, [evidenceGrounded, placeholdersFixed, outcomeTampered]);
 
   useEffect(() => {
     if (!didMount.current) {
@@ -173,7 +133,7 @@ export const GateChamber: React.FC = () => {
   const handleRedTeam = async (fromAuto = false) => {
     if (!fromAuto) cancelAutoPlay();
     soundEngine.playSieveDrop();
-    const { outcomeHash: oh } = await computeHashes(stateRef.current);
+    const { outcomeHash: oh } = await computeGateHashes(stateRef.current);
     const next = { ...stateRef.current, redTeamRan: true, redTeamHash: oh };
     stateRef.current = next;
     setState(next);
@@ -198,7 +158,7 @@ export const GateChamber: React.FC = () => {
 
   const finalizeSignoff = async (rev: string) => {
     const snap = stateRef.current;
-    const { outcomeHash: oh, adrHash: ah } = await computeHashes(snap);
+    const { outcomeHash: oh, adrHash: ah } = await computeGateHashes(snap);
     const willPass = snap.evidenceGrounded && snap.placeholdersFixed && snap.redTeamRan && snap.redTeamHash === oh;
     if (willPass) soundEngine.playGatePass();
     else soundEngine.playSieveDrop();
@@ -253,11 +213,7 @@ export const GateChamber: React.FC = () => {
     clearTimers();
     setAutoPlaying(false);
     soundEngine.playTick(540);
-    stateRef.current = INITIAL_STATE;
-    setState(INITIAL_STATE);
-    setTtyOpen(false);
-    setTtyConfirmInput('');
-    setActiveRuleId('G10');
+    resetMachine();
     setTermLines([
       { id: nextId.current++, kind: 'cmd', text: '$ vck gate --decision D-001' },
       { id: nextId.current++, kind: 'fail', text: 'FAIL (exit 1) · Reset to unverified draft ADR.' },
@@ -266,8 +222,8 @@ export const GateChamber: React.FC = () => {
 
   const handleAutoPlay = () => {
     clearTimers();
-    stateRef.current = INITIAL_STATE;
-    setState(INITIAL_STATE);
+    stateRef.current = INITIAL_GATE_STATE;
+    setState(INITIAL_GATE_STATE);
     setTtyOpen(false);
     setAutoPlaying(true);
     setTermLines([{ id: nextId.current++, kind: 'cmd', text: '$ vck gate --decision D-001  # guided demo' }]);
@@ -300,7 +256,7 @@ export const GateChamber: React.FC = () => {
             <span className="eyebrow-dark mono">03 · MECHANICAL PHASE 0 GATE</span>
             <h2 className="dark-title">Nothing ships unchallenged.</h2>
             <p className="dark-sub">
-              Run the 3-second demo or operate every SHA-256 check manually — then tamper with the ADR.
+              Watch the 3-second demo, flip the 4 locks yourself, or tamper with the file.
             </p>
           </div>
 
@@ -600,7 +556,7 @@ export const GateChamber: React.FC = () => {
               )}
             </div>
             <div className="gate-term-boundary mono">
-              Boundary: Vivechak verifies structure, SHA-256 parity &amp; typed /dev/tty sign-off — it never calls LLMs or fetches external URLs.
+              100% local check — verifies structure, SHA-256 parity &amp; /dev/tty sign-off (0 LLM calls).
             </div>
           </div>
         </div>

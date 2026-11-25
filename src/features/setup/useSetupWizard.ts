@@ -15,6 +15,30 @@ export interface UseSetupWizardOptions {
   bridgedHost?: { hostId: string; nonce: number } | null;
 }
 
+function extractOptionsFromQuestion(question: string): string | null {
+  const clean = question.replace(/[?!.]+$/, '').trim();
+  // Pattern 1: "migrate ... from <A> to <B>"
+  const migrateMatch = clean.match(/\bfrom\s+([A-Za-z0-9.+/_-]+(?:\s+[A-Za-z0-9.+/_-]+){0,2})\s+(?:to|→|->)\s+([A-Za-z0-9.+/_-]+(?:\s+[A-Za-z0-9.+/_-]+){0,2})/i);
+  if (migrateMatch) {
+    return `${migrateMatch[1].trim()}, ${migrateMatch[2].trim()}`;
+  }
+  // Pattern 2: "Compare A vs B vs C [for ...]" or "A vs B"
+  const stripped = clean
+    .replace(/^(?:please\s+)?(?:compare|comparison\s+(?:of|between)|choose\s+between|evaluate|should\s+(?:we|i)\s+(?:use|adopt|pick|choose))\s+/i, '')
+    .replace(/\s+(?:for|in|on|with)\s+(?:our|my|a|an|the)\b.*$/i, '')
+    .trim();
+  if (/\s+(?:vs\.?|versus|or)\s+/i.test(stripped)) {
+    const parts = stripped
+      .split(/\s+(?:vs\.?|versus|or)\s+|,\s*/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 2 && s.length <= 36);
+    if (parts.length >= 2) {
+      return parts.slice(0, 5).join(', ');
+    }
+  }
+  return null;
+}
+
 export function useSetupWizard({ bridgedPrompt, bridgedHost }: UseSetupWizardOptions) {
   const [hostId, setHostId] = useState(HOST_PRESETS[0].id);
   const [outputMode, setOutputMode] = useState<OutputMode>('cli');
@@ -68,11 +92,11 @@ export function useSetupWizard({ bridgedPrompt, bridgedHost }: UseSetupWizardOpt
     setBuilderScope(bridgedPrompt.scope);
     setBuilderQuestion(bridgedPrompt.question);
     setBuilderDoor(bridgedPrompt.doorType);
-    const vsMatch = bridgedPrompt.question.match(
-      /(?:compare|choose|evaluate|between)?\s*([A-Za-z0-9.+_-]+(?:\s+[A-Za-z0-9.+_-]+)?)\s+(?:vs\.?|versus|or|→|to)\s+([A-Za-z0-9.+_-]+(?:\s+[A-Za-z0-9.+_-]+)?)/i,
-    );
-    if (vsMatch) {
-      setBuilderOptions(`${vsMatch[1].trim()}, ${vsMatch[2].trim()}`);
+    const extracted = extractOptionsFromQuestion(bridgedPrompt.question);
+    if (extracted) {
+      setBuilderOptions(extracted);
+    } else if (bridgedPrompt.scope === 'project') {
+      setBuilderOptions('');
     }
     setOutputMode('manual');
     document.getElementById('setup')?.scrollIntoView({ behavior: 'smooth' });

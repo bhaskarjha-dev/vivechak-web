@@ -165,7 +165,7 @@ export const ArchitectureStage: React.FC = () => {
             <span className="eyebrow-light mono">04 · ARCHITECTURE IN MOTION</span>
             <h2 className="paper-title">Plain Markdown. Zero lock-in.</h2>
             <p className="paper-sub">
-              Topological DAG scheduling and a 9-tool MCP surface over ordinary files in{' '}
+              Parallel DAG scheduling and 9 MCP tools over ordinary Git files in{' '}
               <code className="code-tag-light">research/</code>.
             </p>
           </div>
@@ -175,7 +175,7 @@ export const ArchitectureStage: React.FC = () => {
               [
                 ['dag', 'Live DAG', GitBranch],
                 ['files', 'Git Files', FileCode2],
-                ['mcp', 'MCP & Grades', Cpu],
+                ['mcp', 'MCP Surface', Cpu],
               ] as const
             ).map(([id, label, Icon]) => (
               <button
@@ -254,6 +254,10 @@ export const ArchitectureStage: React.FC = () => {
                     {allL1Done ? '✓ Unlocked (Reset)' : 'Unlock SYN-01'}
                   </motion.button>
                 </div>
+              </div>
+
+              <div className="dag-explain">
+                Parallel sessions feed <code className="mono">SYN-01 → FAD.md</code>. Click any Layer 1 node or simulate a swarm.
               </div>
 
               <div className="dag-svg-wrap">
@@ -510,10 +514,10 @@ export const ArchitectureStage: React.FC = () => {
                       <button
                         type="button"
                         className={`dock-copy mono ${copiedId === 'prompt-name' ? 'copied' : ''}`}
-                        onClick={() => copySnippet('prompt-name', activePrompt.name, activePrompt.name)}
+                        onClick={() => copySnippet('prompt-name', `${activePrompt.name} JSON-RPC`, activePrompt.sampleRequest)}
                       >
                         {copiedId === 'prompt-name' ? <Check size={12} /> : <Copy size={12} />}
-                        <span>{copiedId === 'prompt-name' ? 'Copied' : 'Copy'}</span>
+                        <span>{copiedId === 'prompt-name' ? 'Copied' : 'Copy JSON'}</span>
                       </button>
                     </div>
                     <div className="mcp-prompt-details">
@@ -527,17 +531,7 @@ export const ArchitectureStage: React.FC = () => {
                       </div>
                     </div>
                     <pre className="dark-code-block mcp-pre mono">
-                      <code>{renderHighlightedCode(`// Client MCP Prompt Request
-{
-  "method": "prompts/get",
-  "params": {
-    "name": "${activePrompt.name.replace(/^\//, '')}",
-    "arguments": {
-      "options": "Pino vs Winston",
-      "context": "High-throughput microservice handling 15k req/s"
-    }
-  }
-}`, 'json')}</code>
+                      <code>{renderHighlightedCode(activePrompt.sampleRequest, 'json')}</code>
                     </pre>
                   </div>
                 </div>
@@ -590,35 +584,47 @@ export const ArchitectureStage: React.FC = () => {
                   </div>
                 </div>
               )}
-
-              <div className="grades-ribbon" role="tablist" aria-label="Evidence Grades A through E">
-                {EVIDENCE_GRADES.map((g) => (
-                  <button
-                    key={g.grade}
-                    type="button"
-                    role="tab"
-                    aria-selected={selectedGrade === g.grade}
-                    className={`grade-chip g-${g.grade} ${selectedGrade === g.grade ? 'is-selected' : ''}`}
-                    onClick={() => {
-                      soundEngine.playTick(g.grade === 'A' || g.grade === 'B' ? 800 : 620);
-                      setSelectedGrade(g.grade);
-                    }}
-                  >
-                    <span className="mono g-ch-letter">{g.grade}</span>
-                    <div>
-                      <strong>{g.label}</strong>
-                      <span className="mono g-ch-gate">{g.gateImpact}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <div className="grade-specimen-bar mono">
-                <span className={`gsb-badge g-${activeGrade.grade}`}>GRADE {activeGrade.grade}</span>
-                <span className="gsb-desc">{activeGrade.description}</span>
-                <code className="gsb-ex">{activeGrade.example}</code>
-              </div>
             </motion.div>
           )}
+
+        {/* Always-Visible Interactive Evidence Grading Scale (A–E) — Core Epistemic Contract */}
+        <div className="grades-deck">
+          <div className="grades-deck-head mono">
+            <span>EVIDENCE GRADING RUBRIC (A–E) · CLICK ANY GRADE TO INSPECT</span>
+            <span className="grades-deck-cap">MODEL MEMORY CAPS AT GRADE D</span>
+          </div>
+          <div className="grades-ribbon" role="tablist" aria-label="Evidence Grades A through E">
+            {EVIDENCE_GRADES.map((g) => (
+              <button
+                key={g.grade}
+                type="button"
+                role="tab"
+                aria-selected={selectedGrade === g.grade}
+                className={`grade-chip g-${g.grade} ${selectedGrade === g.grade ? 'is-selected' : ''}`}
+                onClick={() => {
+                  soundEngine.playTick(g.grade === 'A' || g.grade === 'B' ? 800 : 620);
+                  setSelectedGrade(g.grade);
+                }}
+              >
+                <div className="grade-chip-top">
+                  <span className="mono g-ch-letter">{g.grade}</span>
+                  <div>
+                    <strong>{g.label}</strong>
+                    <span className="mono g-ch-gate">{g.gateImpact}</span>
+                  </div>
+                </div>
+                <span className="grade-meter-track" aria-hidden="true">
+                  <span className={`grade-meter-fill g-${g.grade}`} style={{ width: `${g.barWidth}%` }} />
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="grade-specimen-bar mono">
+            <span className={`gsb-badge g-${activeGrade.grade}`}>GRADE {activeGrade.grade}</span>
+            <span className="gsb-desc">{activeGrade.description}</span>
+            <code className="gsb-ex">{activeGrade.example}</code>
+          </div>
+        </div>
       </div>
     </section>
   );

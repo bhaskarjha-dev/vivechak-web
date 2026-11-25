@@ -40,6 +40,12 @@ export async function computeGateHashes(
   return { outcomeHash, adrHash };
 }
 
+export const INITIAL_TERM_LINES: TermLine[] = [
+  { id: 1, kind: 'cmd', text: '$ vck gate --decision D-001' },
+  { id: 2, kind: 'fail', text: 'FAIL (exit 1) · 6 blocking Track B rules: G6 G7 G8 G9 G10 G11' },
+  { id: 3, kind: 'muted', text: 'Click Auto-Play Demo or toggle steps 01–04 to verify live SHA-256.' },
+];
+
 export function useGateStateMachine() {
   const [state, setState] = useState<GateState>(INITIAL_GATE_STATE);
   const stateRef = useRef<GateState>(INITIAL_GATE_STATE);
@@ -53,27 +59,36 @@ export function useGateStateMachine() {
   const [ttyConfirmInput, setTtyConfirmInput] = useState('');
   const [autoPlaying, setAutoPlaying] = useState(false);
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
-  const [termLines, setTermLines] = useState<TermLine[]>([]);
+  const [termLines, setTermLines] = useState<TermLine[]>(INITIAL_TERM_LINES);
 
+  const { evidenceGrounded, placeholdersFixed, outcomeTampered } = state;
   useEffect(() => {
-    void computeGateHashes(state).then(({ outcomeHash: oh, adrHash: ah }) => {
-      setOutcomeHash(oh);
-      setAdrHash(ah);
-    });
-  }, [state]);
+    let alive = true;
+    void computeGateHashes({ evidenceGrounded, placeholdersFixed, outcomeTampered }).then(
+      ({ outcomeHash: oh, adrHash: ah }) => {
+        if (!alive) return;
+        setOutcomeHash(oh);
+        setAdrHash(ah);
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [evidenceGrounded, placeholdersFixed, outcomeTampered]);
 
   const reset = () => {
+    stateRef.current = INITIAL_GATE_STATE;
     setState(INITIAL_GATE_STATE);
     setTtyOpen(false);
     setReviewerInput('Jane Doe');
     setTtyConfirmInput('');
-    setTermLines([]);
     setActiveRuleId('G10');
   };
 
   return {
     state, setState, stateRef,
-    outcomeHash, adrHash,
+    outcomeHash, setOutcomeHash,
+    adrHash, setAdrHash,
     activeRuleId, setActiveRuleId,
     ttyOpen, setTtyOpen,
     reviewerInput, setReviewerInput,
