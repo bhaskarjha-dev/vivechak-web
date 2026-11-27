@@ -1,1 +1,1 @@
-export { SetupSection } from './SetupSection';
+export { SetupPage } from './SetupPage';
