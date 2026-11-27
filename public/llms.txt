@@ -45,7 +45,9 @@ Run `vck setup <host>` (`cursor`, `claude-code`, `vscode`, `claude`, `agy`, `zed
 ## Canonical On-Site Documentation & Interactive Tools
 - Full Combined Manual (Single File for LLMs): https://vivechak.bhaskarjha.dev/llms-full.txt
 - Overview & Interactive Gate: https://vivechak.bhaskarjha.dev/
-- In-Browser ADR Auditor, WEP Builder & Prompt Studio: https://vivechak.bhaskarjha.dev/playground
+- System Architecture, DAG, MCP & Security Explorer: https://vivechak.bhaskarjha.dev/architecture
+- Install, 10 MCP Host Presets, CI & FAQ Workbench: https://vivechak.bhaskarjha.dev/setup
+- In-Browser ADR Auditor, Scope/R-N-B-X Profiler, WEP Builder & Prompt Studio: https://vivechak.bhaskarjha.dev/playground
 - Quickstart (5 Minutes): https://vivechak.bhaskarjha.dev/docs/quickstart
 - Three Scopes & R/N/B/X: https://vivechak.bhaskarjha.dev/docs/scopes
 - 10 Verified MCP Hosts: https://vivechak.bhaskarjha.dev/docs/hosts

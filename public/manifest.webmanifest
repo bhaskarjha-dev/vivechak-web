@@ -1,11 +1,11 @@
 {
   "name": "Vivechak — Prove Decisions Before Code",
   "short_name": "Vivechak",
-  "description": "Local-first Go MCP server and CLI for evidence-graded architecture research (Grades A-E), red-teaming, and Phase 0 exit gates in plain Git Markdown.",
+  "description": "Local-first Go MCP server and CLI for evidence-graded architecture research (Grades A–E), red-teaming, and Phase 0 exit gates in plain Git Markdown.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050811",
-  "theme_color": "#050811",
+  "background_color": "#0A0D14",
+  "theme_color": "#0A0D14",
   "icons": [
     {
       "src": "/assets/favicon.svg",
