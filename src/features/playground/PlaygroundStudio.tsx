@@ -7,20 +7,18 @@ import {
   Check,
   Copy,
   Download,
-  FileCheck2,
   Link2,
   Minus,
   Plus,
   RotateCcw,
-  Scale,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   Trash2,
   Upload,
   Wand2,
 } from 'lucide-react';
 import { AUDITOR_PRESETS } from '@/shared/lib/auditorEngine';
+import { ScopeRiskPanel } from '@/features/calibration/ScopeRiskPanel';
 import { copyText } from '@/shared/lib/clipboard';
 import { downloadTextFile } from '@/shared/lib/download';
 import { renderHighlightedCode } from '@/shared/lib/highlight';
@@ -51,7 +49,6 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
   const {
     tab,
     setTab,
-    didSwitchTab,
     setDidSwitchTab,
     copiedId,
     setCopiedId,
@@ -84,6 +81,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
     pContext,
     setPContext,
     generatedPrompt,
+    applyScopeBridge,
   } = usePlaygroundState({ initialTab, initialPresetLaunch });
 
   const loadLocalMarkdownFile = (file: File | null | undefined) => {
@@ -158,78 +156,77 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
           <div>
             <a
               href="/"
-              className="docs-back-home mono"
+              className="docs-back-home"
               onClick={(e) => {
                 e.preventDefault();
                 soundEngine.playTick(680);
                 navigate('/');
               }}
             >
-              <ArrowLeft size={12} />
-              <span>Back to Overview</span>
+              <ArrowLeft size={13} />
+              <span>Overview</span>
             </a>
-            <span className="eyebrow-dark mono" style={{ display: 'block', marginTop: '0.85rem' }}>
-              LIVE IN-BROWSER WORKBENCH · 100% CLIENT-SIDE
-            </span>
-            <h1 className="play-h1">Vivechak Playground.</h1>
-            <p className="dark-sub">
-              Lint any Markdown ADR against rules G5–G12 &amp; Quality Coach Q-*, build a ±20% WEP matrix, or craft a zero-install prompt — everything runs locally in your browser.
+            <h1 className="play-h1">Playground</h1>
+            <p className="sec-sub mono" style={{ fontSize: '0.82rem' }}>
+              Offline ADR auditor · Scope &amp; R/N/B/X · WEP ±20% · Prompt studio
             </p>
           </div>
 
-          <div className="dark-seg-switch" role="tablist" aria-label="Playground tools">
+          <div className="tab-rail" role="tablist" aria-label="Playground tools">
             {(
               [
-                ['auditor', 'ADR & Gate Auditor', FileCheck2],
-                ['wep', 'WEP ±20% Builder', Scale],
-                ['prompt', 'Prompt Studio', Sparkles],
+                ['auditor', 'ADR & Gate Auditor'],
+                ['scope', 'Scope & Risk'],
+                ['wep', 'WEP ±20% Builder'],
+                ['prompt', 'Prompt Studio'],
               ] as const
-            ).map(([id, label, Icon]) => (
+            ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
                 aria-selected={tab === id}
                 id={`play-tab-${id}`}
-                className={`dark-seg-btn ${tab === id ? 'active' : ''}`}
+                className={`tab-rail-btn ${tab === id ? 'active' : ''}`}
                 onClick={() => {
                   soundEngine.playTick(760);
                   setDidSwitchTab(true);
                   setTab(id);
+                  if (typeof window !== 'undefined') {
+                    window.history.replaceState({}, '', `/playground#${id}`);
+                  }
                 }}
               >
+                <span>{label}</span>
                 {tab === id && (
                   <motion.span
-                    layoutId="playTabPill"
-                    className="dark-seg-bg"
-                    transition={{ type: 'spring', stiffness: 440, damping: 34 }}
+                    layoutId="playTabLine"
+                    className="tab-rail-indicator"
+                    transition={{ type: 'spring', stiffness: 460, damping: 36 }}
                   />
                 )}
-                <Icon size={14} className="seg-ico" />
-                <span className="seg-lbl">{label}</span>
               </button>
             ))}
           </div>
         </div>
 
+        {/* TAB 2: LIVE SCOPE CLASSIFIER & R/N/B/X RISK PROFILER */}
+        {tab === 'scope' && (
+          <ScopeRiskPanel onSendToPromptStudio={applyScopeBridge} />
+        )}
+
         {/* TAB 1: LIVE ADR, SESSION & PHASE 0 GATE AUDITOR */}
         {tab === 'auditor' && (
-          <motion.div
-            key="auditor"
-            className="play-auditor-wrap"
-            initial={didSwitchTab ? { opacity: 0, y: 8 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            <div className="play-preset-bar">
+          <div className="play-auditor-wrap">
+            <div className="play-toolbar">
               <div className="play-preset-chips">
-                <span className="mono wep-lbl">LOAD SAMPLE:</span>
+                <span className="play-lbl">Sample:</span>
                 {AUDITOR_PRESETS.map((pr) => (
                   <button
                     key={pr.id}
                     type="button"
                     id={`auditor-preset-${pr.id}`}
-                    className={`spot-chip mono ${editorText === pr.content ? 'active' : ''}`}
+                    className={`play-preset-btn ${editorText === pr.content ? 'active' : ''}`}
                     onClick={() => {
                       soundEngine.playTick(740);
                       setEditorText(pr.content);
@@ -239,6 +236,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   </button>
                 ))}
               </div>
+
               <div className="play-preset-actions">
                 <input
                   ref={fileInputRef}
@@ -254,9 +252,9 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 <button
                   type="button"
                   id="btn-upload-local-md"
-                  className="setup-dl-btn mono"
+                  className="inline-action-btn"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Open a local .md file from your repository (processed 100% in browser)"
+                  title="Open a local .md file (processed 100% offline)"
                 >
                   <Upload size={12} />
                   <span>Open .md</span>
@@ -264,16 +262,16 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 {needsSkeletonFix && (
                   <button
                     type="button"
-                    className="setup-dl-btn mono"
+                    className="inline-action-btn"
                     onClick={insertMissingSkeleton}
                   >
                     <Wand2 size={12} />
-                    <span>Fix Missing Sections</span>
+                    <span>Fix missing sections</span>
                   </button>
                 )}
                 <button
                   type="button"
-                  className="setup-dl-btn mono"
+                  className="inline-action-btn"
                   onClick={() => {
                     downloadTextFile(auditorDownloadName, editorText);
                     showToast(`Downloaded ${auditorDownloadName}`);
@@ -284,7 +282,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 </button>
                 <button
                   type="button"
-                  className={`dock-copy mono ${copiedId === 'aud-md' ? 'copied' : ''}`}
+                  className={`inline-action-btn ${copiedId === 'aud-md' ? 'copied' : ''}`}
                   onClick={() => void handleCopy('aud-md', editorText, 'Markdown artifact')}
                 >
                   {copiedId === 'aud-md' ? <Check size={12} /> : <Copy size={12} />}
@@ -318,8 +316,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 <div className="setup-code-head mono">
                   <span>
                     {dragActive
-                      ? 'DROP LOCAL .MD FILE TO AUDIT OFFLINE'
-                      : `MARKDOWN ARTIFACT · ${audit.artifactKind.toUpperCase()} (${audit.doorType})`}
+                      ? 'Drop local .md file to audit offline'
+                      : `${audit.artifactKind} · ${audit.doorType}`}
                   </span>
                   <span className="term-hash-pill">sha256:{decisionHash.slice(0, 12)}…</span>
                 </div>
@@ -337,12 +335,12 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
 
               <div className="play-report-card">
                 <div className={`play-verdict-banner ${audit.verdict === 'PASS' ? 'is-pass' : 'is-fail'}`}>
-                  {audit.verdict === 'PASS' ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
+                  {audit.verdict === 'PASS' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
                   <div className="mono">
                     <span className="seal-sub">
                       {audit.verdict === 'PASS'
-                        ? 'MECHANICAL AUDIT CLEAR'
-                        : `${audit.rules.filter((r) => r.status === 'FAIL').length} BLOCKING GATE FAILURE(S)`}
+                        ? 'Mechanical audit clear'
+                        : `${audit.rules.filter((r) => r.status === 'FAIL').length} blocking gate failure(s)`}
                     </span>
                     <strong className="interlock-code" id="auditor-verdict-code">
                       {audit.verdict === 'PASS' ? 'EXIT 0 · PASS' : 'EXIT 1 · HOLD'}
@@ -357,64 +355,63 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   </div>
                 </div>
 
-                <div className="play-rules-list">
-                  <div className="ref-group-lbl mono">MECHANICAL GATE CHECKS</div>
-                  {audit.rules.map((r) => (
-                    <div key={r.id} className={`play-rule-row st-${r.status.toLowerCase().replace('/', '')}`}>
-                      <span className="mono play-rule-badge">
-                        {r.id} · {r.status}
-                      </span>
-                      <div>
-                        <strong>{r.name}</strong>
-                        <span>{r.detail}</span>
+                <div className="play-rules-section">
+                  <div className="play-section-lbl">Mechanical gate checks</div>
+                  <div className="play-rules-ledger">
+                    {audit.rules.map((r) => (
+                      <div key={r.id} className={`play-rule-row st-${r.status.toLowerCase().replace('/', '')}`}>
+                        <span className="mono play-rule-badge">
+                          {r.id} · {r.status}
+                        </span>
+                        <div>
+                          <strong>{r.name}</strong>
+                          <span>{r.detail}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                <div className="play-diag-list">
-                  <div className="ref-group-lbl mono">
-                    QUALITY COACH &amp; DIAGNOSTICS ({audit.diagnostics.length})
+                <div className="play-diag-section">
+                  <div className="play-section-lbl">
+                    Quality coach &amp; diagnostics ({audit.diagnostics.length})
                   </div>
                   {audit.diagnostics.length === 0 ? (
-                    <div className="play-clean-note mono">
-                      ✓ Zero E-*, V-*, W-*, or Q-* coaching observations detected.
+                    <div className="play-clean-note">
+                      Zero E-*, V-*, W-*, or Q-* coaching observations detected.
                     </div>
                   ) : (
-                    audit.diagnostics.map((d) => (
-                      <div key={`${d.code}-${d.message}`} className={`play-diag-row sev-${d.severity}`}>
-                        <div className="play-diag-top mono">
-                          <AlertTriangle size={12} />
-                          <strong>{d.code}</strong>
+                    <div className="play-diag-ledger">
+                      {audit.diagnostics.map((d) => (
+                        <div key={`${d.code}-${d.message}`} className={`play-diag-row sev-${d.severity}`}>
+                          <div className="play-diag-top mono">
+                            <AlertTriangle size={12} />
+                            <strong>{d.code}</strong>
+                          </div>
+                          <p>{d.message}</p>
+                          <span className="mono play-diag-fix">Fix: {d.fix}</span>
                         </div>
-                        <p>{d.message}</p>
-                        <span className="mono play-diag-fix">Fix: {d.fix}</span>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* TAB 2: EDITABLE WEP ±20% MATRIX BUILDER */}
         {tab === 'wep' && (
-          <motion.div
-            key="wep"
-            className="play-wep-wrap"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
+          <div className="play-wep-wrap">
             <div className="play-wep-grid">
               <div className="play-editor-card play-wep-form">
-                <div className="play-preset-bar" style={{ marginBottom: '0.85rem' }}>
+                <div className="play-preset-chips">
+                  <span className="play-lbl">Starter:</span>
                   {WEP_STARTERS.map((st) => (
                     <button
                       key={st.id}
                       type="button"
-                      className={`spot-chip mono ${wepTitle === st.title ? 'active' : ''}`}
+                      className={`play-preset-btn ${wepTitle === st.title ? 'active' : ''}`}
                       onClick={() => {
                         soundEngine.playTick(740);
                         setWepTitle(st.title);
@@ -428,7 +425,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 </div>
 
                 <label className="builder-field">
-                  <span className="setup-label mono">COMPARISON TITLE</span>
+                  <span className="setup-label">Comparison title</span>
                   <input
                     type="text"
                     value={wepTitle}
@@ -437,19 +434,19 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 </label>
 
                 <div className="play-wep-rows-head">
-                  <div className="setup-label mono">OPTIONS ({wepOptions.length} OF 2–5)</div>
+                  <span className="setup-label">Options ({wepOptions.length} of 2–5)</span>
                   {wepOptions.length < 5 && (
                     <button
                       type="button"
                       id="btn-wep-add-option"
-                      className="setup-dl-btn mono"
+                      className="inline-action-btn"
                       onClick={() => {
                         soundEngine.playTick(800);
                         addWepOption();
                       }}
                     >
                       <Plus size={11} />
-                      <span>Add Option</span>
+                      <span>Add option</span>
                     </button>
                   )}
                 </div>
@@ -457,8 +454,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 <div className="play-opt-inputs">
                   {wepOptions.map((opt, idx) => (
                     <label key={idx} className="builder-field">
-                      <span className="setup-label mono play-opt-lbl-row">
-                        <span>OPTION 0{idx + 1}</span>
+                      <span className="setup-label play-opt-lbl-row">
+                        <span>Option 0{idx + 1}</span>
                         {wepOptions.length > 2 && (
                           <button
                             type="button"
@@ -488,11 +485,11 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
 
                 <div className="play-wep-rows">
                   <div className="play-wep-rows-head">
-                    <div className="setup-label mono">CRITERIA · WEIGHTS (AUTO-NORMALIZED) · 1–5 SCORES</div>
+                    <span className="setup-label">Criteria, weights &amp; 1–5 scores</span>
                     <div className="play-wep-rows-actions">
                       <button
                         type="button"
-                        className="setup-dl-btn mono"
+                        className="inline-action-btn"
                         onClick={() => {
                           soundEngine.playTick(800);
                           setWepRows((prev) => [
@@ -507,18 +504,18 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                         }}
                       >
                         <Plus size={11} />
-                        <span>Add Criterion</span>
+                        <span>Add criterion</span>
                       </button>
                       <button
                         type="button"
-                        className="setup-dl-btn mono"
+                        className="inline-action-btn"
                         onClick={() => {
                           soundEngine.playTick(620);
                           setWepTitle(WEP_STARTERS[0].title);
                           setWepOptions([...DEFAULT_WEP_OPTIONS]);
                           setWepRows(DEFAULT_WEP_ROWS.map((r) => ({ ...r, scores: [...r.scores] })));
                         }}
-                        title="Reset WEP matrix to default RAG Vector DB preset"
+                        title="Reset WEP matrix"
                       >
                         <RotateCcw size={11} />
                         <span>Reset</span>
@@ -569,7 +566,6 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                             <button
                               type="button"
                               aria-label={`Remove ${row.name}`}
-                              title="Remove criterion"
                               onClick={() => {
                                 soundEngine.playTick(540);
                                 setWepRows((prev) => prev.filter((item) => item.id !== row.id));
@@ -582,11 +578,11 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       </div>
                       <div className="play-score-trio">
                         {wepOptions.map((optName, oIdx) => (
-                          <div key={oIdx} className="play-score-cell mono">
+                          <div key={oIdx} className="play-score-cell">
                             <span className="play-sc-lbl" title={optName || `Option ${oIdx + 1}`}>
                               {optName || `Option ${oIdx + 1}`}
                             </span>
-                            <div className="play-sc-dots">
+                            <div className="play-sc-dots mono">
                               {[1, 2, 3, 4, 5].map((val) => (
                                 <button
                                   key={val}
@@ -614,8 +610,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
               </div>
 
               <div className="play-wep-out">
-                <div className="play-report-card" style={{ padding: '1.25rem' }}>
-                  <div className="wep-bars-col" style={{ marginBottom: '1.1rem' }}>
+                <div className="play-report-card play-wep-summary">
+                  <div className="wep-bars-col" style={{ marginBottom: '1.15rem' }}>
                     {wepResult.base.scores.map((item, idx) => (
                       <motion.div
                         key={item.optIdx}
@@ -631,16 +627,16 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                           <motion.div
                             className="dark-race-fill"
                             animate={{ width: `${(item.score / 5) * 100}%` }}
-                            transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                           />
                         </div>
                       </motion.div>
                     ))}
                   </div>
 
-                  <div className={`dark-stamp mono ${wepResult.sensitive ? 'is-sens' : 'is-rob'}`}>
-                    <span>±20% TOP-2 WEIGHT SENSITIVITY</span>
-                    <strong>{wepResult.sensitive ? 'WEIGHT-SENSITIVE' : 'ROBUST WINNER'}</strong>
+                  <div className={`dark-stamp ${wepResult.sensitive ? 'is-sens' : 'is-rob'}`}>
+                    <span className="stamp-kicker">±20% top-2 weight sensitivity</span>
+                    <strong>{wepResult.sensitive ? 'Weight-sensitive' : 'Robust winner'}</strong>
                   </div>
                 </div>
 
@@ -651,9 +647,8 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       <button
                         type="button"
                         id="btn-wep-audit"
-                        className="setup-dl-btn mono"
+                        className="inline-action-btn"
                         onClick={auditGeneratedWep}
-                        title="Send generated WEP matrix directly to the Gate Auditor tab"
                       >
                         <span>Audit</span>
                         <ArrowRight size={11} />
@@ -661,16 +656,15 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       <button
                         type="button"
                         id="btn-wep-share"
-                        className="setup-dl-btn mono"
+                        className="inline-action-btn"
                         onClick={() => void shareWepLink()}
-                        title="Copy stateless shareable URL for this WEP matrix"
                       >
                         <Link2 size={12} />
                         <span>Share</span>
                       </button>
                       <button
                         type="button"
-                        className="setup-dl-btn mono"
+                        className="inline-action-btn"
                         onClick={() => {
                           downloadTextFile('C-001-comparison.md', wepResult.markdown);
                           showToast('Downloaded C-001-comparison.md');
@@ -681,7 +675,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       </button>
                       <button
                         type="button"
-                        className={`dock-copy mono ${copiedId === 'wep-md' ? 'copied' : ''}`}
+                        className={`inline-action-btn ${copiedId === 'wep-md' ? 'copied' : ''}`}
                         onClick={() => void handleCopy('wep-md', wepResult.markdown, 'C-001-comparison.md')}
                       >
                         {copiedId === 'wep-md' ? <Check size={12} /> : <Copy size={12} />}
@@ -695,25 +689,19 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* TAB 3: ZERO-INSTALL PROMPT STUDIO */}
         {tab === 'prompt' && (
-          <motion.div
-            key="prompt"
-            className="setup-split"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
+          <div className="setup-split">
             <div className="setup-left">
-              <div className="play-preset-bar" style={{ marginBottom: '0.2rem' }}>
-                <span className="mono wep-lbl">TRY EXAMPLE:</span>
+              <div className="play-preset-chips">
+                <span className="play-lbl">Example:</span>
                 {(
                   [
                     {
-                      label: 'Compare Libraries',
+                      label: 'Compare libraries',
                       scope: 'comparison' as const,
                       door: 'two-way' as const,
                       q: 'Compare Pino vs Winston for a 15k req/sec Node.js API gateway',
@@ -721,7 +709,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       ctx: 'Node 22; strict p99 latency budget (<2ms logging overhead); Datadog ingestion',
                     },
                     {
-                      label: 'Event Bus Migration',
+                      label: 'Event bus migration',
                       scope: 'decision' as const,
                       door: 'one-way' as const,
                       q: 'Should we adopt Kafka or NATS JetStream for cross-region event streaming?',
@@ -729,7 +717,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                       ctx: '80k msg/s burst; 5-person platform team; strict replay window of 7 days',
                     },
                     {
-                      label: 'Greenfield Platform',
+                      label: 'Greenfield platform',
                       scope: 'project' as const,
                       door: 'one-way' as const,
                       q: 'Architect a multi-tenant B2B observability platform with EU GDPR compliance',
@@ -741,7 +729,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   <button
                     key={ex.label}
                     type="button"
-                    className={`spot-chip mono ${pQuestion === ex.q ? 'active' : ''}`}
+                    className={`play-preset-btn ${pQuestion === ex.q ? 'active' : ''}`}
                     onClick={() => {
                       soundEngine.playTick(740);
                       setPScope(ex.scope);
@@ -757,13 +745,13 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
               </div>
 
               <div className="builder-scope-row">
-                <span className="setup-label mono">RESEARCH SCOPE</span>
-                <div className="builder-scope-pills">
+                <span className="setup-label">Research scope</span>
+                <div className="sieve-rail">
                   {(['comparison', 'decision', 'project'] as const).map((sc) => (
                     <button
                       key={sc}
                       type="button"
-                      className={`spot-chip mono ${pScope === sc ? 'active' : ''}`}
+                      className={`sieve-rail-btn ${pScope === sc ? 'active' : ''}`}
                       onClick={() => {
                         soundEngine.playTick(740);
                         setPScope(sc);
@@ -777,13 +765,13 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
 
               {pScope === 'decision' && (
                 <div className="builder-scope-row">
-                  <span className="setup-label mono">DOOR CLASSIFICATION</span>
-                  <div className="builder-scope-pills">
+                  <span className="setup-label">Door classification</span>
+                  <div className="sieve-rail">
                     {(['one-way', 'two-way'] as const).map((dt) => (
                       <button
                         key={dt}
                         type="button"
-                        className={`spot-chip mono ${pDoor === dt ? 'active' : ''}`}
+                        className={`sieve-rail-btn ${pDoor === dt ? 'active' : ''}`}
                         onClick={() => {
                           soundEngine.playTick(720);
                           setPDoor(dt);
@@ -797,7 +785,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
               )}
 
               <label className="builder-field">
-                <span className="setup-label mono">TECHNICAL QUESTION OR VISION</span>
+                <span className="setup-label">Technical question or vision</span>
                 <input
                   type="text"
                   value={pQuestion}
@@ -807,7 +795,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
 
               {pScope !== 'project' && (
                 <label className="builder-field">
-                  <span className="setup-label mono">CONTENDER OPTIONS</span>
+                  <span className="setup-label">Contender options</span>
                   <input
                     type="text"
                     value={pOptions}
@@ -817,7 +805,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
               )}
 
               <label className="builder-field">
-                <span className="setup-label mono">CONSTRAINTS, SCALE &amp; COMPLIANCE</span>
+                <span className="setup-label">Constraints, scale &amp; compliance</span>
                 <input
                   type="text"
                   value={pContext}
@@ -825,28 +813,27 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 />
               </label>
 
-              <div className="builder-tip mono">
-                Paste directly into Claude, ChatGPT, or Gemini with Web Search enabled — zero installation required.
-              </div>
+              <p className="builder-tip">
+                Paste directly into Claude, ChatGPT, or Gemini with web search enabled — zero installation required.
+              </p>
             </div>
 
             <div className="setup-right">
               <div className="setup-code-head mono">
-                <span>ZERO-INSTALL PROMPT · {pScope.toUpperCase()}</span>
+                <span>Zero-install prompt · {pScope}</span>
                 <div className="setup-code-actions">
                   <button
                     type="button"
                     id="btn-prompt-share"
-                    className="setup-dl-btn mono"
+                    className="inline-action-btn"
                     onClick={() => void sharePromptLink()}
-                    title="Copy stateless shareable URL for this prompt"
                   >
                     <Link2 size={12} />
                     <span>Share</span>
                   </button>
                   <button
                     type="button"
-                    className="setup-dl-btn mono"
+                    className="inline-action-btn"
                     onClick={() => {
                       downloadTextFile(`vivechak-${pScope}-prompt.md`, generatedPrompt);
                       showToast(`Downloaded vivechak-${pScope}-prompt.md`);
@@ -857,7 +844,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                   </button>
                   <button
                     type="button"
-                    className={`dock-copy mono ${copiedId === 'studio-p' ? 'copied' : ''}`}
+                    className={`inline-action-btn ${copiedId === 'studio-p' ? 'copied' : ''}`}
                     onClick={() => void handleCopy('studio-p', generatedPrompt, `${pScope} prompt`)}
                   >
                     {copiedId === 'studio-p' ? <Check size={12} /> : <Copy size={12} />}
@@ -869,7 +856,7 @@ export const PlaygroundStudio: React.FC<PlaygroundStudioProps> = ({
                 <code>{renderHighlightedCode(generatedPrompt, 'markdown')}</code>
               </pre>
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

@@ -5,7 +5,40 @@ import { sha256Hex } from '@/shared/lib/sha256';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
 
-export type PlaygroundTab = 'auditor' | 'wep' | 'prompt';
+export type PlaygroundTab = 'auditor' | 'scope' | 'wep' | 'prompt';
+
+export interface ScopeToPromptBridge {
+  scope: 'comparison' | 'decision' | 'project';
+  question: string;
+  doorType: 'one-way' | 'two-way';
+}
+
+function extractOptionsFromQuestion(question: string): string | null {
+  const clean = question.replace(/[?!.]+$/, '').trim();
+  const migrateMatch = clean.match(
+    /\bfrom\s+([A-Za-z0-9.+/_-]+(?:\s+[A-Za-z0-9.+/_-]+){0,2})\s+(?:to|→|->)\s+([A-Za-z0-9.+/_-]+(?:\s+[A-Za-z0-9.+/_-]+){0,2})/i
+  );
+  if (migrateMatch) {
+    return `${migrateMatch[1].trim()}, ${migrateMatch[2].trim()}`;
+  }
+  const stripped = clean
+    .replace(
+      /^(?:please\s+)?(?:compare|comparison\s+(?:of|between)|choose\s+between|evaluate|should\s+(?:we|i)\s+(?:use|adopt|pick|choose))\s+/i,
+      ''
+    )
+    .replace(/\s+(?:for|in|on|with)\s+(?:our|my|a|an|the)\b.*$/i, '')
+    .trim();
+  if (/\s+(?:vs\.?|versus|or)\s+/i.test(stripped)) {
+    const parts = stripped
+      .split(/\s+(?:vs\.?|versus|or)\s+|,\s*/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 2 && s.length <= 36);
+    if (parts.length >= 2) {
+      return parts.slice(0, 5).join(', ');
+    }
+  }
+  return null;
+}
 
 export interface CustomWepRow {
   id: string;
@@ -270,41 +303,75 @@ export function usePlaygroundState({
     [pScope, pQuestion, pOptions, pContext, pDoor]
   );
 
-  // Restore stateless shareable URL hash (#wep=... or #prompt=...) on load
+  const applyScopeBridge = useCallback((payload: ScopeToPromptBridge) => {
+    setPScope(payload.scope);
+    setPDoor(payload.doorType);
+    setPQuestion(payload.question);
+    const extracted = extractOptionsFromQuestion(payload.question);
+    if (extracted) {
+      setPOptions(extracted);
+    } else if (payload.scope === 'project') {
+      setPOptions('');
+    }
+    setDidSwitchTab(true);
+    setTab('prompt');
+    showToast(`Prompt Studio pre-filled (${payload.scope.toUpperCase()})`);
+  }, []);
+
+  // Restore tab or stateless shareable URL hash (#auditor | #scope | #wep | #prompt | #wep=... | #prompt=...)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const h = window.location.hash;
-    if (h.startsWith('#wep=')) {
-      const data = decodeSharePayload<{
-        title?: string;
-        options?: string[];
-        rows?: CustomWepRow[];
-      }>(h.slice(5));
-      if (data?.title && Array.isArray(data.options) && data.options.length >= 2 && data.options.length <= 5 && Array.isArray(data.rows)) {
-        setWepTitle(data.title);
-        setWepOptions(data.options);
-        setWepRows(data.rows);
+    const syncHash = () => {
+      const h = window.location.hash;
+      if (h === '#auditor') {
+        setTab('auditor');
+      } else if (h === '#scope') {
+        setTab('scope');
+      } else if (h === '#wep') {
         setTab('wep');
-        showToast('Loaded shared WEP matrix');
-      }
-    } else if (h.startsWith('#prompt=')) {
-      const data = decodeSharePayload<{
-        scope?: 'comparison' | 'decision' | 'project';
-        door?: 'one-way' | 'two-way';
-        question?: string;
-        options?: string;
-        context?: string;
-      }>(h.slice(8));
-      if (data?.question) {
-        if (data.scope) setPScope(data.scope);
-        if (data.door) setPDoor(data.door);
-        setPQuestion(data.question);
-        if (data.options !== undefined) setPOptions(data.options);
-        if (data.context !== undefined) setPContext(data.context);
+      } else if (h === '#prompt') {
         setTab('prompt');
-        showToast('Loaded shared prompt');
+      } else if (h.startsWith('#wep=')) {
+        const data = decodeSharePayload<{
+          title?: string;
+          options?: string[];
+          rows?: CustomWepRow[];
+        }>(h.slice(5));
+        if (
+          data?.title &&
+          Array.isArray(data.options) &&
+          data.options.length >= 2 &&
+          data.options.length <= 5 &&
+          Array.isArray(data.rows)
+        ) {
+          setWepTitle(data.title);
+          setWepOptions(data.options);
+          setWepRows(data.rows);
+          setTab('wep');
+          showToast('Loaded shared WEP matrix');
+        }
+      } else if (h.startsWith('#prompt=')) {
+        const data = decodeSharePayload<{
+          scope?: 'comparison' | 'decision' | 'project';
+          door?: 'one-way' | 'two-way';
+          question?: string;
+          options?: string;
+          context?: string;
+        }>(h.slice(8));
+        if (data?.question) {
+          if (data.scope) setPScope(data.scope);
+          if (data.door) setPDoor(data.door);
+          setPQuestion(data.question);
+          if (data.options !== undefined) setPOptions(data.options);
+          if (data.context !== undefined) setPContext(data.context);
+          setTab('prompt');
+          showToast('Loaded shared prompt');
+        }
       }
-    }
+    };
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
   }, []);
 
   return {
@@ -332,5 +399,6 @@ export function usePlaygroundState({
     pOptions, setPOptions,
     pContext, setPContext,
     generatedPrompt,
+    applyScopeBridge,
   } as const;
 }
