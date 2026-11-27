@@ -1,20 +1,17 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Copy, Pause, Play, RotateCcw, Terminal } from 'lucide-react';
-import { INSTALL_CHANNELS } from '@/shared/data/vivechakData';
+import { ArrowRight, Check, Copy, Pause, Play, RotateCcw } from 'lucide-react';
 import { copyText } from '@/shared/lib/clipboard';
+import { navigate } from '@/shared/lib/router';
 import { soundEngine } from '@/shared/lib/sound';
 import { showToast } from '@/shared/lib/toast';
 import type { ThemeMode } from '@/shared/lib/theme';
-import { Magnetic } from '@/shared/components/Magnetic';
 import { VivechakLogoCanvas2D } from './VivechakLogoCanvas2D';
 import type { SieveMode } from './VivechakLogoHero';
 
 const loadVivechakLogoHero = () =>
   import('@/features/hero/VivechakLogoHero').then((m) => ({ default: m.VivechakLogoHero }));
 
-// Detect real hardware-accelerated WebGL vs software-emulated / disabled GPU (Cloudtop, CRD, VMs).
-// Hardware GPUs launch full Three.js WebGL2; software/non-GPU browsers run the instant 0ms-load 60fps Canvas2D forge.
 function detectHardwareWebGL(): boolean {
   if (typeof window === 'undefined') return false;
   if (window.location.search.includes('force3d=1')) return true;
@@ -50,7 +47,7 @@ const HeroLogoFallback = () => (
           fillRule="evenodd"
           className="vck-mark-body"
         />
-        <circle cx="256" cy="374.16" r="34.5" fill="none" stroke="#F2A33A" strokeOpacity="0.38" strokeWidth="1.6" />
+        <circle cx="256" cy="374.16" r="34.5" fill="none" stroke="#F2A33A" strokeOpacity="0.34" strokeWidth="1.5" />
         <circle cx="256" cy="374.16" r="21.6" fill="#F2A33A" />
       </svg>
     </div>
@@ -62,62 +59,83 @@ interface HeroSectionProps {
   onSelectHost?: (hostId: string) => void;
 }
 
-const QUICK_HOSTS = [
+const VERIFIED_PROOFS = [
+  'Grade A · clickhouse.com/docs',
+  'D-001-R1 · SHA-256 bound',
+  'PG16 CTE <50ms · Neo4j refuted',
+  'WEP ±20% · flip caught',
+  '/dev/tty · Exit 0 sealed',
+];
+
+const MODES: { id: SieveMode; label: string; topSig: string; botSig: string; tone: 'sift' | 'raw' | 'sealed' }[] = [
+  { id: 'sift', label: 'Sift', topSig: 'IN · RECALL + URLS', botSig: 'OUT · [A · FETCHED]', tone: 'sift' },
+  { id: 'noise', label: 'Raw', topSig: 'UNFILTERED MEMORY', botSig: 'GRADE D · BYPASSED', tone: 'raw' },
+  { id: 'sealed', label: 'Sealed', topSig: 'G1–G12 VERIFIED', botSig: 'EXIT 0 · /DEV/TTY', tone: 'sealed' },
+];
+
+interface HeroInstallTab {
+  id: 'shell' | 'brew' | 'powershell' | 'npx' | 'uvx';
+  label: string;
+  primaryCmd: string;
+  wireCmd?: string;
+  wireComment?: string;
+  ephemeralHint?: string;
+}
+
+const HERO_INSTALL_TABS: HeroInstallTab[] = [
+  {
+    id: 'shell',
+    label: 'macOS / Linux',
+    primaryCmd: 'curl -fsSL https://vivechak.bhaskarjha.dev/install.sh | bash',
+    wireCmd: 'vck setup',
+    wireComment: '# auto-wires your AI editor',
+  },
+  {
+    id: 'brew',
+    label: 'Homebrew',
+    primaryCmd: 'brew install --cask bhaskarjha-dev/tap/vivechak',
+    wireCmd: 'vck setup',
+    wireComment: '# auto-wires your AI editor',
+  },
+  {
+    id: 'powershell',
+    label: 'Windows',
+    primaryCmd: 'irm https://vivechak.bhaskarjha.dev/install.ps1 | iex',
+    wireCmd: 'vck setup',
+    wireComment: '# auto-wires your AI editor',
+  },
+  {
+    id: 'npx',
+    label: 'npx',
+    primaryCmd: 'npx -y vivechak serve',
+    ephemeralHint: 'Zero-install Node.js MCP server · add to mcp.json',
+  },
+  {
+    id: 'uvx',
+    label: 'uvx',
+    primaryCmd: 'uvx vck serve',
+    ephemeralHint: 'Zero-install Python/uv MCP server · add to mcp.json',
+  },
+];
+
+const HERO_QUICK_HOSTS = [
   { id: 'cursor', label: 'Cursor' },
   { id: 'claude-code', label: 'Claude Code' },
   { id: 'vscode', label: 'VS Code' },
-  { id: 'antigravity', label: 'Antigravity' },
   { id: 'zed', label: 'Zed' },
-  { id: 'windsurf', label: 'Windsurf' },
-];
-
-const VERIFIED_PROOFS = [
-  'GRADE A · clickhouse.com/docs · MERGETREE VERIFIED',
-  'RED-TEAM · D-001-R1 · SHA-256 BOUND',
-  'DELTA · PG16 CTE <50ms · NEO4J REFUTED',
-  'WEP ±20% · WEIGHT-SENSITIVE FLIP CAUGHT',
-  'HUMAN TTY · vck signoff · EXIT 0 SEALED',
-];
-
-const MODES: { id: SieveMode; label: string; hint: string; desktopHint?: string }[] = [
-  { id: 'sift', label: 'Sift', hint: 'Drag to spin · flick sets axis', desktopHint: ' · hold to distill · dbl-click resets' },
-  { id: 'noise', label: 'Raw Chat', hint: 'Ungated AI guesses straight into code' },
-  { id: 'sealed', label: 'Sealed', hint: 'Red-teamed & human-signed · Exit 0' },
-];
-
-const PRIMARY_CHANNEL_IDS = new Set(['shell', 'brew', 'powershell', 'npx', 'uvx', 'skill']);
-
-const SHORT_LABELS: Record<string, string> = {
-  shell: 'curl',
-  brew: 'brew',
-  winget: 'winget',
-  scoop: 'scoop',
-  powershell: 'win',
-  npx: 'npx',
-  uvx: 'uvx',
-  pip: 'pip',
-  'linux-pkg': 'deb/rpm',
-  docker: 'docker',
-  skill: 'skill',
-  nix: 'nix',
-  go: 'go',
-};
+  { id: 'antigravity', label: 'Antigravity' },
+] as const;
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost }) => {
-  const [channelId, setChannelId] = useState(INSTALL_CHANNELS[0].id);
-  const [showAllChannels, setShowAllChannels] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [channelId, setChannelId] = useState<HeroInstallTab['id']>('shell');
+  const [copiedKey, setCopiedKey] = useState<'primary' | 'wire' | null>(null);
   const [mode, setMode] = useState<SieveMode>('sift');
-  const [distilledCount, setDistilledCount] = useState(0);
   const [impulseNonce, setImpulseNonce] = useState(0);
   const [impulseText, setImpulseText] = useState(VERIFIED_PROOFS[0]);
-  const [hasInteracted, setHasInteracted] = useState(false);
   const [hasCustomSpin, setHasCustomSpin] = useState(false);
-  const [hoveredSculpture, setHoveredSculpture] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
   const [resetAxisNonce, setResetAxisNonce] = useState(0);
   const [rotationPaused, setRotationPaused] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [heroEngine, setHeroEngine] = useState<'ssr' | 'webgl' | 'canvas2d'>('ssr');
 
   useEffect(() => {
@@ -129,148 +147,259 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
       setHeroEngine('canvas2d');
     }
     try {
-      const saved = localStorage.getItem('vck_install_channel');
-      if (saved && INSTALL_CHANNELS.some((c) => c.id === saved)) {
+      const saved = localStorage.getItem('vck_hero_channel') as HeroInstallTab['id'] | null;
+      if (saved && HERO_INSTALL_TABS.some((c) => c.id === saved)) {
         setChannelId(saved);
-        if (!PRIMARY_CHANNEL_IDS.has(saved)) setShowAllChannels(true);
       } else if (navigator.userAgent && /Windows/i.test(navigator.userAgent)) {
         setChannelId('powershell');
       }
     } catch {
       // ignore
     }
-
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const selectChannel = (id: string) => {
-    soundEngine.playTick(720);
-    setChannelId(id);
-    setCopied(false);
-    try {
-      localStorage.setItem('vck_install_channel', id);
-    } catch {
-      // ignore
-    }
-  };
 
   const triggerSculpturePulse = () => {
     soundEngine.playSieveDrop();
-    setHasInteracted(true);
     setImpulseNonce((n) => {
       const next = n + 1;
       setImpulseText(VERIFIED_PROOFS[(next - 1) % VERIFIED_PROOFS.length]);
       return next;
     });
-    setDistilledCount((c) => c + 1);
   };
 
   const triggerSuperDistill = () => {
     soundEngine.playGatePass();
-    setHasInteracted(true);
-    setImpulseText('SEALED · G1–G12 PASS · EXIT 0');
+    setImpulseText('Sealed · G1–G12 · Exit 0');
     setImpulseNonce((n) => n + 1);
-    setDistilledCount((c) => c + 1);
   };
 
-  const primaryChannels = INSTALL_CHANNELS.filter((c) => PRIMARY_CHANNEL_IDS.has(c.id));
-  const extraChannels = INSTALL_CHANNELS.filter((c) => !PRIMARY_CHANNEL_IDS.has(c.id));
-  const visibleChannels = showAllChannels ? INSTALL_CHANNELS : primaryChannels;
   const activeChannel =
-    INSTALL_CHANNELS.find((c) => c.id === channelId) ?? INSTALL_CHANNELS[0];
+    HERO_INSTALL_TABS.find((c) => c.id === channelId) ?? HERO_INSTALL_TABS[0];
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0];
 
-  const handleCopy = async () => {
-    const ok = await copyText(activeChannel.command);
+  const selectHeroChannel = (id: HeroInstallTab['id']) => {
+    soundEngine.playTick(740);
+    setChannelId(id);
+    setCopiedKey(null);
+    try {
+      localStorage.setItem('vck_hero_channel', id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCopy = async (key: 'primary' | 'wire', cmd: string, toastLabel: string) => {
+    const ok = await copyText(cmd);
     if (!ok) return;
     soundEngine.playSieveDrop();
-    setCopied(true);
-    showToast(`Copied ${SHORT_LABELS[activeChannel.id] ?? activeChannel.label} install command`);
-    window.setTimeout(() => setCopied(false), 1800);
+    setCopiedKey(key);
+    showToast(`Copied ${toastLabel}`);
+    window.setTimeout(() => setCopiedKey(null), 1800);
+  };
+
+  const handleHostClick = (hostId: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    soundEngine.playTick(760);
+    if (onSelectHost) {
+      onSelectHost(hostId);
+    } else {
+      navigate(`/setup?host=${encodeURIComponent(hostId)}`);
+    }
   };
 
   return (
     <section className="hero-stage" id="top">
-      <div className="wrap hero-overlay">
-        <div className="hero-top-meta mono">
-          <span>OPEN-SOURCE GO MCP SERVER &amp; CLI · V0.1.0</span>
-          <span className="hero-live-status">
-            <span className={`live-dot mode-${mode}`} aria-hidden="true" />
-            {mode === 'sift' &&
-              (distilledCount > 0 ? (
-                <span className="odo-wrap">
-                  SIEVE ACTIVE ·{' '}
-                  <span className="odo-window" data-count={distilledCount}>
-                    <motion.span
-                      key={distilledCount}
-                      className="odo-digit"
-                      initial={{ y: 8, opacity: 0.35 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      +{distilledCount}
-                    </motion.span>
-                  </span>{' '}
-                  DISTILLED
-                </span>
-              ) : (
-                'EPISTEMIC SIEVE · 30° APERTURE'
-              ))}
-            {mode === 'noise' && 'RAW RECALL · UNGATED'}
-            {mode === 'sealed' && 'PHASE 0 · SHA-256 SEALED'}
-          </span>
-        </div>
+      <div className="wrap hero-grid">
+        <div className="hero-copy">
+          <p className="hero-kicker mono">
+            <span className="hero-kicker-seg">v0.1.0</span>
+            <span className="hero-kicker-sep">·</span>
+            <span className="hero-kicker-seg">Local MCP server</span>
+            <span className="hero-kicker-sep">·</span>
+            <span className="hero-kicker-seg">9 MB Go</span>
+            <span className="hero-kicker-sep">·</span>
+            <span className="hero-kicker-seg">0 telemetry</span>
+          </p>
 
-        <div className="hero-main">
-          <div className="hero-copy">
-            <h1 className="hero-h1">
-              Prove decisions{' '}
-              <br />
-              <span className="hero-accent">before code.</span>
-            </h1>
+          <h1 className="hero-h1">
+            Prove decisions
+            <br />
+            <span className="hero-h1-muted">before code</span>
+          </h1>
 
-            <p className="hero-one-liner">
-              Force AI coding agents to cite proof, stress-test tradeoffs, and earn human sign-off — in plain Git Markdown.
-            </p>
+          <p className="hero-lead">
+            Cited research, SHA-256 red-teaming, and human sign-off — in Git Markdown.
+          </p>
 
-            <div className="hero-actions">
-              <Magnetic>
-                <motion.a
-                  href="#gate"
-                  id="hero-cta-gate"
-                  className="btn-saffron"
-                  whileHover={{ y: -2, scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => soundEngine.playSieveDrop()}
-                >
-                  <Terminal size={15} strokeWidth={2.2} />
-                  <span>Try Live Gate</span>
-                </motion.a>
-              </Magnetic>
-              <motion.a
-                href="#setup"
-                id="hero-cta-setup"
-                className="btn-glass"
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => soundEngine.playTick(740)}
-              >
-                <span>Wire Your Editor</span>
-                <ArrowRight size={15} strokeWidth={2} />
-              </motion.a>
-            </div>
-
-            <div className="hero-quiet-proof mono" aria-label="Core architectural guarantees">
-              <span className="hqp-item">0 hidden DBs</span>
-              <span className="hqp-item">0 telemetry</span>
-              <span className="hqp-item">9 MCP tools (&lt;10 KB)</span>
-            </div>
+          <div className="hero-actions">
+            <a
+              href="#gate"
+              id="hero-cta-gate"
+              className="btn-primary"
+              onClick={() => soundEngine.playSieveDrop()}
+            >
+              <span>Try the live gate</span>
+              <ArrowRight size={15} strokeWidth={2} />
+            </a>
+            <a
+              href="/playground"
+              id="hero-cta-playground"
+              className="btn-secondary"
+              onClick={(e) => {
+                e.preventDefault();
+                soundEngine.playTick(740);
+                navigate('/playground');
+              }}
+            >
+              <span>Open Playground</span>
+            </a>
           </div>
 
-          <div className="hero-sculpture-col">
-            {/* Signature Interactive Optical-Prism Monument (WebGL2 on GPU / 60fps True-3D Canvas2D Fallback) */}
+          <div className="hero-install" id="install-bar">
+            <div className="hero-term-card">
+              <div className="hero-term-head">
+                <div className="hero-term-tabs" role="tablist" aria-label="Install MCP server">
+                  {HERO_INSTALL_TABS.map((tab) => {
+                    const isAct = tab.id === activeChannel.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isAct}
+                        id={`hero-ch-${tab.id}`}
+                        className={`hero-term-tab ${isAct ? 'active' : ''}`}
+                        onClick={() => selectHeroChannel(tab.id)}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <a
+                  href="/setup"
+                  className="hero-term-more mono"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    soundEngine.playTick(740);
+                    navigate('/setup');
+                  }}
+                >
+                  All 12 + Skill →
+                </a>
+              </div>
+
+              <div className="hero-term-body">
+                <div className="hero-term-row">
+                  <span className="hero-cmd-prompt mono" aria-hidden="true">$</span>
+                  <code className="hero-cmd-code mono" id="install-command-text">
+                    {activeChannel.primaryCmd}
+                  </code>
+                  <button
+                    type="button"
+                    id="btn-copy-install"
+                    className={`inline-action-btn ${copiedKey === 'primary' ? 'copied' : ''}`}
+                    onClick={() =>
+                      handleCopy('primary', activeChannel.primaryCmd, `${activeChannel.label} command`)
+                    }
+                  >
+                    {copiedKey === 'primary' ? (
+                      <Check size={12} strokeWidth={2.3} />
+                    ) : (
+                      <Copy size={12} strokeWidth={1.9} />
+                    )}
+                    <span>{copiedKey === 'primary' ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+
+                {activeChannel.wireCmd ? (
+                  <div className="hero-term-row is-step2">
+                    <span className="hero-cmd-prompt mono" aria-hidden="true">$</span>
+                    <code className="hero-cmd-code mono" id="wire-command-text">
+                      {activeChannel.wireCmd}
+                      {activeChannel.wireComment && (
+                        <span className="hero-cmd-comment"> {activeChannel.wireComment}</span>
+                      )}
+                    </code>
+                    <button
+                      type="button"
+                      id="btn-copy-wire"
+                      className={`inline-action-btn ${copiedKey === 'wire' ? 'copied' : ''}`}
+                      onClick={() =>
+                        handleCopy('wire', activeChannel.wireCmd!, 'vck setup command')
+                      }
+                    >
+                      {copiedKey === 'wire' ? (
+                        <Check size={12} strokeWidth={2.3} />
+                      ) : (
+                        <Copy size={12} strokeWidth={1.9} />
+                      )}
+                      <span>{copiedKey === 'wire' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hero-term-row is-ephemeral">
+                    <span className="hero-cmd-prompt is-muted mono" aria-hidden="true">#</span>
+                    <span className="hero-ephemeral-note mono">{activeChannel.ephemeralHint}</span>
+                    <a
+                      href="/setup"
+                      className="hero-ephemeral-link mono"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        soundEngine.playTick(740);
+                        navigate('/setup');
+                      }}
+                    >
+                      Host JSON →
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="hero-hosts-bar mono" aria-label="Verified MCP hosts">
+              <span className="hero-hosts-lbl">MCP hosts</span>
+              {HERO_QUICK_HOSTS.map((h) => (
+                <a
+                  key={h.id}
+                  href={`/setup?host=${h.id}`}
+                  className="hero-host-chip"
+                  onClick={handleHostClick(h.id)}
+                >
+                  {h.label}
+                </a>
+              ))}
+              <a
+                href="/setup"
+                className="hero-meta-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  soundEngine.playTick(740);
+                  navigate('/setup');
+                }}
+              >
+                +5 more →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="hero-sculpture-col">
+          <div className={`hero-optical-field tone-${activeMode.tone}`}>
+            {/* Subtle Architectural Reticle — Dieter Rams Optical Instrument */}
+            <svg className="optical-reticle" viewBox="0 0 420 420" aria-hidden="true">
+              <circle cx="210" cy="210" r="184" className="reticle-ring" />
+              <circle cx="210" cy="210" r="132" className="reticle-ring is-dashed" />
+              <line x1="210" y1="12" x2="210" y2="34" className="reticle-tick" />
+              <line x1="210" y1="386" x2="210" y2="408" className="reticle-tick" />
+              <line x1="12" y1="210" x2="34" y2="210" className="reticle-tick" />
+              <line x1="386" y1="210" x2="408" y2="210" className="reticle-tick" />
+            </svg>
+
+            <span className="optical-tag is-top mono" aria-hidden="true">
+              {activeMode.topSig}
+            </span>
+
             {heroEngine === 'webgl' ? (
               <Suspense fallback={<HeroLogoFallback />}>
                 <VivechakLogoHero
@@ -281,7 +410,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                   rotationPaused={rotationPaused}
                   onPulseClick={triggerSculpturePulse}
                   onSuperDistill={triggerSuperDistill}
-                  onTruthPulse={() => setDistilledCount((n) => n + 1)}
                 />
               </Suspense>
             ) : heroEngine === 'canvas2d' ? (
@@ -291,10 +419,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                 id="sculpture-pulse-btn"
                 role="button"
                 tabIndex={0}
-                aria-label="Interactive Vivechak sieve sculpture — drag to orbit 360° across X, Y, and Z, hold to distill truth, pull the drop, or press Enter"
-                onPointerEnter={() => setHoveredSculpture(true)}
-                onPointerLeave={() => setHoveredSculpture(false)}
-                onPointerDown={() => setHasInteracted(true)}
+                aria-label="Interactive Vivechak sieve sculpture — drag to orbit 3D, hold to distill, pull the saffron drop, or press Enter"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -311,7 +436,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                   rotationPaused={rotationPaused}
                   onQuickPulse={triggerSculpturePulse}
                   onSuperDistill={triggerSuperDistill}
-                  onTruthPulse={() => setDistilledCount((n) => n + 1)}
                   onCustomSpinChange={setHasCustomSpin}
                 />
                 <div className="logo-pulse-layer" aria-hidden="true">
@@ -319,9 +443,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                     {impulseNonce > 0 && (
                       <motion.span
                         key={impulseNonce}
-                        className={`sculpture-pulse-tag mono ${impulseText.includes('EXIT 0') ? 'is-super' : ''}`}
-                        initial={{ opacity: 0.98, y: 12, scale: 0.92 }}
-                        animate={{ opacity: 0, y: -38, scale: 1.02 }}
+                        className={`sculpture-pulse-tag mono ${impulseText.includes('Exit 0') ? 'is-super' : ''}`}
+                        initial={{ opacity: 0.96, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 0, y: -32, scale: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
                       >
@@ -329,41 +453,36 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  {hoveredSculpture && !hasInteracted && mode === 'sift' && (
-                    <span className="logo-first-whisper mono">
-                      DRAG TO SPIN · HOLD TO DISTILL
-                    </span>
-                  )}
                 </div>
                 <div className="logo-corner-controls">
                   {hasCustomSpin && (
                     <button
                       type="button"
                       id="btn-reset-axis"
-                      className="logo-replay-btn is-visible mono"
+                      className="logo-replay-btn is-visible"
                       onClick={(e) => {
                         e.stopPropagation();
                         soundEngine.playSieveDrop();
                         setResetAxisNonce((n) => n + 1);
                       }}
-                      title="Reset rotation axis & upright angle"
-                      aria-label="Reset 3D rotation axis"
+                      title="Reset upright orientation"
+                      aria-label="Reset 3D orientation"
                     >
                       <RotateCcw size={11} />
-                      <span>Reset Axis</span>
+                      <span>Reset</span>
                     </button>
                   )}
                   <button
                     type="button"
                     id="btn-replay-logo"
-                    className="logo-replay-btn mono"
+                    className="logo-replay-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       soundEngine.playTick(760);
                       setReplayNonce((n) => n + 1);
                     }}
-                    title="Replay entrance & liquid condensation"
-                    aria-label="Replay Vivechak logo animation"
+                    title="Replay distillation animation"
+                    aria-label="Replay Vivechak animation"
                   >
                     <RotateCcw size={11} />
                     <span>Replay</span>
@@ -374,164 +493,49 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ theme, onSelectHost })
               <HeroLogoFallback />
             )}
 
-            {/* Instrument Lens Controls — Anchored Directly Below the Physical Sieve */}
-            <div className="sieve-mode-bar">
-              <div className="sieve-controls-row">
-                <div className="sieve-pills" role="group" aria-label="3D Epistemic Sieve mode">
-                  {MODES.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      id={`sieve-mode-${m.id}`}
-                      className={`sieve-pill mono ${mode === m.id ? 'active' : ''}`}
-                      onClick={() => {
-                        if (m.id === 'sealed') soundEngine.playGatePass();
-                        else if (m.id === 'noise') soundEngine.playReject();
-                        else soundEngine.playSieveDrop();
-                        setMode(m.id);
-                      }}
-                    >
-                      {mode === m.id && (
-                        <motion.span
-                          layoutId="sieveModePill"
-                          className="sieve-pill-bg"
-                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                        />
-                      )}
-                      <span className="sieve-pill-label">{m.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  id="btn-toggle-rotation"
-                  className={`sieve-pause-btn mono ${rotationPaused ? 'is-paused' : ''}`}
-                  aria-pressed={rotationPaused}
-                  aria-label={rotationPaused ? 'Resume 3D logo rotation' : 'Pause 3D logo rotation'}
-                  title={rotationPaused ? 'Resume 3D rotation' : 'Pause 3D rotation'}
-                  onClick={() => {
-                    soundEngine.playTick(rotationPaused ? 780 : 540);
-                    setRotationPaused((p) => !p);
-                  }}
-                >
-                  {rotationPaused ? <Play size={11} /> : <Pause size={11} />}
-                  <span>{rotationPaused ? 'Resume' : 'Pause'}</span>
-                </button>
+            <span className={`optical-tag is-bottom mono tone-${activeMode.tone}`} aria-hidden="true">
+              {activeMode.botSig}
+            </span>
+          </div>
+
+          <div className="sieve-mode-bar">
+            <div className="sieve-controls-row">
+              <div className="sieve-rail" role="group" aria-label="Epistemic sieve state">
+                {MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    id={`sieve-mode-${m.id}`}
+                    className={`sieve-rail-btn ${mode === m.id ? 'active' : ''}`}
+                    onClick={() => {
+                      if (m.id === 'sealed') soundEngine.playGatePass();
+                      else if (m.id === 'noise') soundEngine.playReject();
+                      else soundEngine.playSieveDrop();
+                      setMode(m.id);
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
-              <span key={rotationPaused ? 'paused' : mode} className="sieve-hint mono">
-                {rotationPaused ? (
-                  'Rotation paused · drag 360° to inspect any angle'
-                ) : (
-                  <>
-                    {activeMode.hint}
-                    {activeMode.desktopHint && (
-                      <span className="desktop-only-inline">{activeMode.desktopHint}</span>
-                    )}
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="install-dock" id="install-bar">
-          <div className="dock-tabs" role="tablist" aria-label="Install methods">
-            {visibleChannels.map((ch) => (
               <button
-                key={ch.id}
                 type="button"
-                role="tab"
-                aria-selected={ch.id === channelId}
-                className={`dock-tab mono ${ch.id === channelId ? 'active' : ''}`}
-                onClick={() => selectChannel(ch.id)}
+                id="btn-toggle-rotation"
+                className={`sieve-pause-icon ${rotationPaused ? 'is-paused' : ''}`}
+                aria-pressed={rotationPaused}
+                aria-label={rotationPaused ? 'Resume subtle motion' : 'Pause motion'}
+                title={rotationPaused ? 'Resume motion' : 'Pause motion'}
+                onClick={() => {
+                  soundEngine.playTick(rotationPaused ? 780 : 540);
+                  setRotationPaused((p) => !p);
+                }}
               >
-                {ch.id === channelId && (
-                  <motion.span
-                    layoutId="installTabBg"
-                    className="dock-tab-bg"
-                    transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                  />
-                )}
-                <span className="dock-tab-text">{SHORT_LABELS[ch.id] ?? ch.label}</span>
+                {rotationPaused ? <Play size={12} /> : <Pause size={12} />}
               </button>
-            ))}
-
-            <button
-              type="button"
-              id="btn-toggle-more-channels"
-              className={`dock-tab dock-more-btn mono ${showAllChannels ? 'is-open' : ''}`}
-              aria-expanded={showAllChannels}
-              onClick={() => {
-                soundEngine.playTick(740);
-                setShowAllChannels((v) => !v);
-              }}
-            >
-              <span>{showAllChannels ? 'Less' : `+${extraChannels.length} more`}</span>
-              <ChevronDown size={11} className={`dock-more-chev ${showAllChannels ? 'is-open' : ''}`} />
-            </button>
-          </div>
-
-          <div className="dock-cmd">
-            <span className="dock-prompt mono" aria-hidden="true">$</span>
-            <code className="dock-code mono" id="install-command-text">
-              {activeChannel.command}
-            </code>
-            <motion.button
-              type="button"
-              id="btn-copy-install"
-              className={`dock-copy mono ${copied ? 'copied' : ''}`}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleCopy}
-            >
-              {copied ? <Check size={13} strokeWidth={2.5} /> : <Copy size={13} strokeWidth={2} />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </motion.button>
-          </div>
-
-          {activeChannel.id === 'skill' && (
-            <div className="dock-skill-note mono">
-              Dual-mode SKILL.md — works standalone (zero binary) or auto-upgrades with local vck MCP tools.
-            </div>
-          )}
-
-          <div className="hero-hosts-strip mono" aria-label="Supported MCP editors">
-            <span className="hero-hosts-lbl">WORKS IN</span>
-            <div className="hero-hosts-list">
-              {QUICK_HOSTS.map((h) => (
-                <button
-                  key={h.id}
-                  type="button"
-                  className="hero-host-chip mono"
-                  onClick={() => {
-                    soundEngine.playTick(760);
-                    onSelectHost?.(h.id);
-                  }}
-                >
-                  {h.label}
-                </button>
-              ))}
-              <a
-                href="#setup"
-                className="hero-host-more mono"
-                onClick={() => soundEngine.playTick(720)}
-              >
-                +4 hosts →
-              </a>
             </div>
           </div>
         </div>
       </div>
-
-      <a
-        href="#shift"
-        className={`scroll-cue mono ${scrolled ? 'is-gone' : ''}`}
-        aria-label="Scroll to see how Vivechak works"
-      >
-        <span>SCROLL</span>
-        <span className="scroll-cue-track" aria-hidden="true">
-          <span className="scroll-cue-drop" />
-        </span>
-      </a>
     </section>
   );
 };

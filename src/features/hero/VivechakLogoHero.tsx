@@ -700,7 +700,7 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
     const AXIS_Y = new THREE.Vector3(0, 1, 0);
     const AXIS_Z = new THREE.Vector3(0, 0, 1);
     const DEFAULT_CRUISE_AXIS = new THREE.Vector3(0.05, 1.0, 0.0).normalize();
-    const DEFAULT_CRUISE_SPEED = 0.62; // ~10.1s per full 360° 3D revolution (~35.5°/sec)
+    const DEFAULT_CRUISE_SPEED = 0; // Poised upright presentation at rest; 360° flick cruise unlocks on drag
     const IDENTITY_Q = new THREE.Quaternion();
     const tmpQ1 = new THREE.Quaternion();
     const tmpQ2 = new THREE.Quaternion();
@@ -1047,7 +1047,10 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       const elapsed = clock.elapsedTime;
       const curMode = modeRef.current;
       const modeVal = curMode === 'noise' ? 1 : curMode === 'sealed' ? 2 : 0;
-      const isLight = themeRef.current === 'light';
+      const isLight =
+        typeof document !== 'undefined' && document.documentElement.dataset.theme
+          ? document.documentElement.dataset.theme === 'light'
+          : themeRef.current === 'light';
       const damp = 1 - Math.exp(-dt * 7.2);
 
       noiseBlend += ((curMode === 'noise' ? 1 : 0) - noiseBlend) * damp;
@@ -1474,13 +1477,14 @@ export const VivechakLogoHero: React.FC<VivechakLogoHeroProps> = ({
       keyLight.position.x = 3.8 + pointer.x * 3.8 + Math.sin(elapsed * 0.48) * 1.8;
       keyLight.position.y = 6.2 + pointer.y * 2.2;
 
-      // Subtle sculptural breathing pitch tilt layered gently over the continuous 3D rotation
+      // Poised upright sculptural breathing tilt at rest; softens during custom 360° spin
       const isPaused = pausedRef.current;
-      const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.16 : 0.45;
+      const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.14 : 1.0;
+      const idleYaw = gesture.customSpin ? 0 : Math.sin(elapsed * 0.52) * 0.19;
       tmpEuler.set(
-        (-pointer.y * 0.08 + Math.sin(elapsed * 0.42) * 0.11) * breatheWeight,
-        pointer.x * 0.12 * (isPaused ? 0 : gesture.customSpin ? 0.25 : 0.55),
-        Math.sin(elapsed * 0.31) * 0.03 * breatheWeight,
+        (-pointer.y * 0.08 + Math.sin(elapsed * 0.38) * 0.055) * breatheWeight,
+        (pointer.x * 0.14 + idleYaw) * breatheWeight,
+        Math.sin(elapsed * 0.31) * 0.018 * breatheWeight,
         'YXZ'
       );
       baseTiltQ.setFromEuler(tmpEuler);

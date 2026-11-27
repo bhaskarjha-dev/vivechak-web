@@ -228,7 +228,7 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const DEFAULT_CRUISE_AXIS: Vec3 = [0.05 / Math.hypot(0.05, 1.0, 0.0), 1.0 / Math.hypot(0.05, 1.0, 0.0), 0];
-    const DEFAULT_CRUISE_SPEED = 0.62; // ~10.1s per full 360° 3D revolution (~35.5°/sec)
+    const DEFAULT_CRUISE_SPEED = 0; // Poised upright stance at rest; 360° flick cruise activates on user drag
     let cruiseAxis: Vec3 = [...DEFAULT_CRUISE_AXIS];
     let userQuat: Quat = QUAT_IDENTITY;
     if (forceOrbitPreview) {
@@ -1116,7 +1116,10 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       lastTs = now;
       elapsed += dt;
 
-      const isLight = themeRef.current === 'light';
+      const isLight =
+        typeof document !== 'undefined' && document.documentElement.dataset.theme
+          ? document.documentElement.dataset.theme === 'light'
+          : themeRef.current === 'light';
       const curMode = modeRef.current;
       const damp = 1 - Math.exp(-dt * 7.2);
       noiseBlend += ((curMode === 'noise' ? 1 : 0) - noiseBlend) * damp;
@@ -1390,12 +1393,14 @@ export const VivechakLogoCanvas2D: React.FC<VivechakLogoCanvas2DProps> = ({
       ctx.scale(unit * 0.96 * chargeScale, unit * 0.96 * chargeScale);
 
       if (useFull3D) {
-        // Layer a whisper-gentle sculptural breathing pitch tilt on top of userQuat
-        const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.16 : 0.45;
+        // Poised upright sculptural breathing yaw/pitch at rest; softens during custom 360° spin
+        const breatheWeight = isPaused ? 0 : gesture.customSpin ? 0.14 : 1.0;
+        const idleYaw = gesture.customSpin ? 0 : Math.sin(elapsed * 0.52) * 0.19;
+        const idlePitch = Math.sin(elapsed * 0.38) * 0.055;
         const breatheQ = quatNormalize(
           quatMultiply(
-            quatFromAxisAngle([1, 0, 0], (-pointer.y * 0.07 + Math.sin(elapsed * 0.42) * 0.10) * breatheWeight),
-            quatFromAxisAngle([0, 1, 0], pointer.x * 0.10 * (isPaused ? 0 : gesture.customSpin ? 0.25 : 0.5))
+            quatFromAxisAngle([1, 0, 0], (-pointer.y * 0.08 + idlePitch) * breatheWeight),
+            quatFromAxisAngle([0, 1, 0], (pointer.x * 0.14 + idleYaw) * breatheWeight)
           )
         );
         const renderQ = quatNormalize(quatMultiply(userQuat, breatheQ));

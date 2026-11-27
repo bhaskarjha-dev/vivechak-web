@@ -10,7 +10,6 @@ import {
   useGateStateMachine,
   type TermLine,
 } from './useGateStateMachine';
-import { Magnetic } from '@/shared/components/Magnetic';
 
 export const GateChamber: React.FC = () => {
   const {
@@ -226,7 +225,7 @@ export const GateChamber: React.FC = () => {
     setState(INITIAL_GATE_STATE);
     setTtyOpen(false);
     setAutoPlaying(true);
-    setTermLines([{ id: nextId.current++, kind: 'cmd', text: '$ vck gate --decision D-001  # guided demo' }]);
+    setTermLines([{ id: nextId.current++, kind: 'cmd', text: '$ vck gate --decision D-001  # guided walkthrough' }]);
 
     const schedule = (ms: number, fn: () => void) => {
       timersRef.current.push(window.setTimeout(fn, ms));
@@ -245,54 +244,39 @@ export const GateChamber: React.FC = () => {
   return (
     <section className="band-chamber" id="gate">
       <div className="wrap">
-        <motion.div
-          className="sec-head-split"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 'some' }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        >
+        <div className="sec-head-split">
           <div>
-            <span className="eyebrow-dark mono">03 · MECHANICAL PHASE 0 GATE</span>
-            <h2 className="dark-title">Nothing ships unchallenged.</h2>
-            <p className="dark-sub">
-              Watch the 3-second demo, flip the 4 locks yourself, or tamper with the file.
+            <h2 className="sec-title">Mechanical exit gate</h2>
+            <p className="sec-sub mono" style={{ fontSize: '0.8rem' }}>
+              G1–G12 · live Web Crypto SHA-256 · /dev/tty sign-off
             </p>
           </div>
 
           <div className="gate-head-right">
-            <Magnetic>
-              <motion.button
-                type="button"
-                id="gate-autoplay-btn"
-                className="autoplay-btn mono"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleAutoPlay}
-                disabled={autoPlaying}
-              >
-                <Play size={12} fill="currentColor" />
-                <span>{autoPlaying ? 'Running…' : 'Auto-Play Demo'}</span>
-              </motion.button>
-            </Magnetic>
-
-            <motion.div
-              layout
-              className={`gate-seal ${passed ? 'is-pass' : 'is-fail'}`}
-              animate={{ scale: passed ? [1, 1.04, 1] : 1 }}
-              transition={{ duration: 0.35 }}
+            <button
+              type="button"
+              id="gate-autoplay-btn"
+              className="btn-secondary btn-sm"
+              onClick={handleAutoPlay}
+              disabled={autoPlaying}
             >
-              {passed ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
+              <Play size={12} fill="currentColor" />
+              <span>{autoPlaying ? 'Running…' : 'Auto-play demo'}</span>
+            </button>
+
+            <div className={`gate-seal ${passed ? 'is-pass' : 'is-fail'}`}>
+              {passed ? <ShieldCheck size={17} /> : <ShieldAlert size={17} />}
               <div className="mono">
-                <span className="seal-sub">{passed ? 'CLEAR TO CODE' : `${failCount} BLOCKING`}</span>
+                <span className="seal-sub">{passed ? 'Clear to code' : `${failCount} blocking`}</span>
                 <strong className="interlock-code">{passed ? 'EXIT 0 · PASS' : 'EXIT 1 · HOLD'}</strong>
               </div>
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
 
-        <div className="gate-strip-wrap">
-          <div className="gate-12-strip" role="tablist" aria-label="Phase 0 Gate Rules G1 to G12">
+        <div className="gate-instrument">
+          <div className="gate-strip-wrap">
+            <div className="gate-12-strip" role="tablist" aria-label="Phase 0 Gate Rules G1 to G12">
             {rules.map((r) => {
               const linked =
                 (hoveredStep === 0 && (r.id === 'G6' || r.id === 'G7')) ||
@@ -317,8 +301,8 @@ export const GateChamber: React.FC = () => {
               );
             })}
           </div>
-          <div className="gate-12-note mono">
-            <span className={`g-note-id st-${inspected.status.toLowerCase().replace('/', '')}`}>
+          <div className="gate-12-note">
+            <span className={`g-note-id mono st-${inspected.status.toLowerCase().replace('/', '')}`}>
               {inspected.id} · {inspected.status}
             </span>
             <span>{inspected.note}</span>
@@ -326,108 +310,109 @@ export const GateChamber: React.FC = () => {
         </div>
 
         <div className="gate-cockpit">
-          <div className="gate-switches">
-            {[
-              {
-                id: 'gate-step-evidence',
-                num: '01',
-                title: 'Ground ≥2 Grade A/B URLs',
-                rules: 'G6 · G7',
-                done: state.evidenceGrounded,
-                onClick: () => handleGround(false),
-              },
-              {
-                id: 'gate-step-placeholders',
-                num: '02',
-                title: 'Lock Rejected Alts & Trigger',
-                rules: 'G8 · G9',
-                done: state.placeholdersFixed,
-                onClick: () => handleFixStubs(false),
-              },
-              {
-                id: 'gate-step-redteam',
-                num: '03',
-                title: 'Run Red-Team SHA-256 Hash',
-                rules: 'G10',
-                done: state.redTeamRan && state.redTeamHash === outcomeHash,
-                onClick: () => void handleRedTeam(false),
-              },
-              {
-                id: 'gate-step-signoff',
-                num: '04',
-                title: 'Human TTY Sign-Off',
-                rules: 'G11',
-                done: state.signedOff && state.reviewedHash === adrHash,
-                onClick: () => {
-                  cancelAutoPlay();
-                  soundEngine.playTick(760);
-                  setTtyOpen(true);
+          <div className="gate-steps-col">
+            <div className="gate-checklist">
+              {[
+                {
+                  id: 'gate-step-evidence',
+                  num: '01',
+                  title: 'Ground ≥2 Grade A/B URLs',
+                  rules: 'G6 · G7',
+                  done: state.evidenceGrounded,
+                  onClick: () => handleGround(false),
                 },
-              },
-            ].map((step, sIdx) => (
-              <motion.button
-                key={step.id}
-                type="button"
-                id={step.id}
-                className={`g-step-btn ${step.done ? 'done' : ''}`}
-                whileTap={{ scale: 0.99 }}
-                onMouseEnter={() => setHoveredStep(sIdx)}
-                onMouseLeave={() => setHoveredStep(null)}
-                onFocus={() => setHoveredStep(sIdx)}
-                onBlur={() => setHoveredStep(null)}
-                onClick={step.onClick}
-              >
-                <span className="mono g-step-num">
-                  {step.done ? <Check size={14} strokeWidth={2.5} /> : step.num}
-                </span>
-                <span className="g-step-title">{step.title}</span>
-                <span className="mono g-step-tag">{step.rules}</span>
-              </motion.button>
-            ))}
+                {
+                  id: 'gate-step-placeholders',
+                  num: '02',
+                  title: 'Lock rejected alternatives & trigger',
+                  rules: 'G8 · G9',
+                  done: state.placeholdersFixed,
+                  onClick: () => handleFixStubs(false),
+                },
+                {
+                  id: 'gate-step-redteam',
+                  num: '03',
+                  title: 'Run red-team SHA-256 hash',
+                  rules: 'G10',
+                  done: state.redTeamRan && state.redTeamHash === outcomeHash,
+                  onClick: () => void handleRedTeam(false),
+                },
+                {
+                  id: 'gate-step-signoff',
+                  num: '04',
+                  title: 'Human /dev/tty sign-off',
+                  rules: 'G11',
+                  done: state.signedOff && state.reviewedHash === adrHash,
+                  onClick: () => {
+                    cancelAutoPlay();
+                    soundEngine.playTick(760);
+                    setTtyOpen(true);
+                  },
+                },
+              ].map((step, sIdx) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  id={step.id}
+                  className={`g-step-btn ${step.done ? 'done' : ''}`}
+                  onMouseEnter={() => setHoveredStep(sIdx)}
+                  onMouseLeave={() => setHoveredStep(null)}
+                  onFocus={() => setHoveredStep(sIdx)}
+                  onBlur={() => setHoveredStep(null)}
+                  onClick={step.onClick}
+                >
+                  <span className="mono g-step-num">
+                    {step.done ? <Check size={13} strokeWidth={2.5} /> : step.num}
+                  </span>
+                  <span className="g-step-title">{step.title}</span>
+                  <span className="mono g-step-tag">{step.rules}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="gate-attack-row">
               <button
                 type="button"
                 id="gate-probe-selfsign"
-                className="attack-pill mono"
+                className="attack-pill"
                 onClick={() => handleAgentSelfSign(false)}
               >
                 <Lock size={12} />
-                <span>Test Agent Self-Sign</span>
+                <span>Test agent self-sign</span>
               </button>
               <button
                 type="button"
                 id="gate-probe-tamper"
-                className={`attack-pill mono ${state.outcomeTampered ? 'is-tampered' : ''}`}
+                className={`attack-pill ${state.outcomeTampered ? 'is-tampered' : ''}`}
                 disabled={!state.redTeamRan && !state.signedOff}
                 onClick={handleTamper}
               >
                 <Unlock size={12} />
-                <span>{state.outcomeTampered ? 'Restore ADR' : 'Tamper Outcome'}</span>
+                <span>{state.outcomeTampered ? 'Restore ADR' : 'Tamper outcome'}</span>
+              </button>
+              <button
+                type="button"
+                id="gate-reset"
+                className="attack-pill attack-reset"
+                onClick={handleReset}
+                aria-label="Reset gate simulator"
+              >
+                <RotateCcw size={12} />
+                <span>Reset</span>
               </button>
               <a
                 href="/playground"
                 id="gate-open-auditor"
-                className="attack-pill gate-auditor-link mono"
+                className="attack-pill gate-auditor-link"
                 onClick={(e) => {
                   e.preventDefault();
                   soundEngine.playSieveDrop();
                   navigate('/playground');
                 }}
               >
-                <span>Audit .md</span>
-                <ArrowRight size={11} />
+                <span>Audit your .md</span>
+                <ArrowRight size={12} />
               </a>
-              <button
-                type="button"
-                id="gate-reset"
-                className="attack-pill attack-reset mono"
-                onClick={handleReset}
-                aria-label="Reset gate simulator"
-              >
-                <RotateCcw size={12} />
-                <span>Reset Gate</span>
-              </button>
             </div>
           </div>
 
@@ -461,12 +446,11 @@ export const GateChamber: React.FC = () => {
           />
 
           <div className={`gate-term ${hashDiverged ? 'is-diverged' : ''}`} aria-live="polite">
-            {/* Animated Step Progress Hairline */}
             <div className="gate-progress-track" aria-hidden="true">
               <motion.div
                 className={`gate-progress-fill ${passed ? 'is-pass' : hashDiverged ? 'is-fail' : ''}`}
                 animate={{ width: `${(clearedSteps / 4) * 100}%` }}
-                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               />
             </div>
 
@@ -482,7 +466,7 @@ export const GateChamber: React.FC = () => {
             </div>
 
             <div className={`gate-watched-diff mono ${state.outcomeTampered ? 'is-tampered' : ''}`}>
-              <span className="gwd-lbl">{state.outcomeTampered ? 'TAMPERED DIFF' : 'HASHED OUTCOME'}</span>
+              <span className="gwd-lbl">{state.outcomeTampered ? 'TAMPERED' : 'OUTCOME'}</span>
               {state.outcomeTampered ? (
                 <span className="gwd-text">
                   <del>+ Vector 10k buffer</del> <ins>NO batch buffer</ins>
@@ -502,7 +486,7 @@ export const GateChamber: React.FC = () => {
               {ttyOpen && (
                 <motion.form
                   className="tty-panel"
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   onSubmit={(e) => void handleSignoff(e)}
                 >
@@ -533,13 +517,14 @@ export const GateChamber: React.FC = () => {
                     </label>
                   </div>
                   <div className="tty-foot">
-                    <button type="submit" id="tty-submit-btn" className="btn-saffron btn-sm">
-                      Attest &amp; Seal
+                    <button type="submit" id="tty-submit-btn" className="tty-submit-btn">
+                      Attest &amp; seal
                     </button>
                     {ttyConfirmInput.trim().toUpperCase() !== 'D-001' && (
                       <button
                         type="button"
-                        className="attack-pill mono"
+                        id="tty-fill-btn"
+                        className="tty-ghost-btn mono"
                         onClick={() => {
                           soundEngine.playKey();
                           setTtyConfirmInput('D-001');
@@ -548,17 +533,19 @@ export const GateChamber: React.FC = () => {
                         Fill D-001
                       </button>
                     )}
-                    <button type="button" className="attack-pill mono" onClick={() => setTtyOpen(false)}>
+                    <button type="button" className="tty-ghost-btn mono" onClick={() => setTtyOpen(false)}>
                       Cancel
                     </button>
                   </div>
                 </motion.form>
               )}
             </div>
+
             <div className="gate-term-boundary mono">
-              100% local check — verifies structure, SHA-256 parity &amp; /dev/tty sign-off (0 LLM calls).
+              Local · 0 LLM calls · Web Crypto SHA-256
             </div>
           </div>
+        </div>
         </div>
       </div>
     </section>
