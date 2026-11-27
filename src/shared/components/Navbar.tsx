@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion';
-import { ArrowUpRight, BookOpen, Command, Menu, Moon, Sun, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowUpRight, Menu, Moon, Search, Sun, Volume2, VolumeX, X } from 'lucide-react';
 import { navigate } from '@/shared/lib/router';
 import { soundEngine } from '@/shared/lib/sound';
 import type { ThemeMode } from '@/shared/lib/theme';
@@ -16,13 +16,11 @@ interface NavbarProps {
 }
 
 const PRIMARY_LINKS = [
-  { id: 'overview', href: '/', label: 'Overview', kind: 'overview' as const },
-  { id: 'shift', href: '/#shift', label: 'The Shift', kind: 'section' as const },
-  { id: 'calibrate', href: '/#calibrate', label: 'Calibrate', kind: 'section' as const },
-  { id: 'gate', href: '/#gate', label: 'Gate', kind: 'section' as const },
-  { id: 'playground', href: '/playground', label: 'Playground', kind: 'playground' as const },
-  { id: 'docs', href: '/docs/quickstart', label: 'Docs', kind: 'docs' as const },
-];
+  { id: 'architecture', href: '/architecture', label: 'Architecture' },
+  { id: 'setup', href: '/setup', label: 'Setup' },
+  { id: 'playground', href: '/playground', label: 'Playground' },
+  { id: 'docs', href: '/docs/quickstart', label: 'Docs' },
+] as const;
 
 export const Navbar: React.FC<NavbarProps> = ({
   pathname,
@@ -33,92 +31,48 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPalette,
   onOpenReference,
 }) => {
-  const isHome = pathname === '/';
   const isDocs = pathname === '/docs' || pathname.startsWith('/docs/');
   const isPlayground = pathname === '/playground';
+  const isArchitecture = pathname === '/architecture';
+  const isSetup = pathname === '/setup';
 
-  const [activeHomeSection, setActiveHomeSection] = useState<string>('');
+  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
-    stiffness: 220,
-    damping: 32,
+    stiffness: 240,
+    damping: 34,
     restDelta: 0.001,
   });
 
   useEffect(() => {
     setMobileOpen(false);
-    if (!isHome) {
-      setActiveHomeSection('');
-      return;
-    }
-
-    const ids = ['shift', 'calibrate', 'gate', 'architecture', 'setup'] as const;
     let rafId = 0;
-
-    const computeActive = () => {
-      rafId = 0;
-      if (window.scrollY < 160) {
-        setActiveHomeSection('');
-        return;
-      }
-      const probeY = Math.min(280, Math.max(140, Math.round(window.innerHeight * 0.28)));
-      let current = '';
-      for (const id of ids) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top <= probeY) {
-          current = id;
-        }
-      }
-      // If a user clicked a hash link directly, keep it honored while its top sits near the viewport header
-      const hashId = window.location.hash.replace(/^#/, '');
-      if (hashId && (ids as readonly string[]).includes(hashId)) {
-        const target = document.getElementById(hashId);
-        if (target) {
-          const top = target.getBoundingClientRect().top;
-          if (top >= -24 && top <= Math.min(340, window.innerHeight * 0.36)) {
-            current = hashId;
-          }
-        }
-      }
-      setActiveHomeSection(current);
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        setScrolled(window.scrollY > 14);
+      });
     };
-
-    const schedule = () => {
-      if (!rafId) rafId = window.requestAnimationFrame(computeActive);
-    };
-
-    computeActive();
-    const settleTimer = window.location.hash ? window.setTimeout(computeActive, 90) : 0;
-    window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule, { passive: true });
-    window.addEventListener('hashchange', schedule);
-
+    setScrolled(window.scrollY > 14);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
-      if (settleTimer) window.clearTimeout(settleTimer);
-      window.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('hashchange', schedule);
+      window.removeEventListener('scroll', onScroll);
     };
-  }, [isHome]);
+  }, [pathname]);
 
   const go = (to: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     soundEngine.playTick(760);
     setMobileOpen(false);
-    const [, hash] = to.split('#');
-    if (to === '/') setActiveHomeSection('');
-    else if (hash && ['shift', 'calibrate', 'gate', 'architecture', 'setup'].includes(hash)) {
-      setActiveHomeSection(hash);
-    }
     navigate(to);
   };
 
   return (
-    <header className="nav-bar" id="site-header">
+    <header className={`nav-bar ${scrolled ? 'is-scrolled' : ''}`} id="site-header">
       <motion.div className="scroll-thread" style={{ scaleX }} aria-hidden="true" />
 
       <div className="wrap nav-inner">
@@ -131,8 +85,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <svg
             viewBox="0 0 512 512"
-            width={24}
-            height={24}
+            width={22}
+            height={22}
             className="nav-logo-svg"
             aria-hidden="true"
           >
@@ -144,34 +98,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             <circle cx="256" cy="374.16" r="21.6" fill="#F2A33A" className="nav-logo-drop" />
           </svg>
           <span className="nav-latin">Vivechak</span>
-          <span className="nav-sep" aria-hidden="true" />
           <img
             src="/assets/wordmark-dark.svg"
-            alt="Vivechak calligraphy wordmark"
-            width={40}
-            height={14}
+            alt="विवेचक"
+            width={36}
+            height={13}
             className="nav-devanagari brand-for-dark"
           />
           <img
             src="/assets/wordmark-light.svg"
-            alt="Vivechak calligraphy wordmark"
-            width={40}
-            height={14}
+            alt="विवेचक"
+            width={36}
+            height={13}
             className="nav-devanagari brand-for-light"
           />
         </a>
 
-        {/* Consistent 6-item navigation across EVERY route — never collapses or jumps when switching pages */}
         <nav className="nav-links" aria-label="Primary navigation">
           {PRIMARY_LINKS.map((l) => {
             const isAct =
-              l.kind === 'playground'
-                ? isPlayground
-                : l.kind === 'docs'
-                  ? isDocs
-                  : l.kind === 'overview'
-                    ? isHome && activeHomeSection === ''
-                    : isHome && activeHomeSection === l.id;
+              l.id === 'architecture'
+                ? isArchitecture
+                : l.id === 'setup'
+                  ? isSetup
+                  : l.id === 'playground'
+                    ? isPlayground
+                    : isDocs;
             return (
               <a
                 key={l.id}
@@ -182,146 +134,125 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={go(l.href)}
               >
                 <span>{l.label}</span>
-                {isAct && (
-                  <motion.span
-                    layoutId="navActiveLine"
-                    className="nav-active-line"
-                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  />
-                )}
               </a>
             );
           })}
         </nav>
 
         <div className="nav-actions">
-          <motion.button
-            type="button"
-            id="btn-field-manual"
-            className="nav-icon-btn nav-docs-btn"
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              soundEngine.playTick(780);
-              onOpenReference();
-            }}
-            aria-label="Open Quick Reference Drawer (?)"
-            title="Quick Reference Cheat Sheet (?)"
-          >
-            <BookOpen size={13} strokeWidth={2} />
-            <span className="mono">Ref</span>
-          </motion.button>
-
-          <motion.button
-            type="button"
-            id="btn-theme-toggle"
-            className="nav-icon-btn"
-            whileTap={{ scale: 0.95 }}
-            onClick={onToggleTheme}
-            aria-pressed={theme === 'light'}
-            aria-label={theme === 'light' ? 'Switch to Obsidian dark theme (T)' : 'Switch to Archival Paper light theme (T)'}
-            title={theme === 'light' ? 'Switch to Dark Theme (T)' : 'Switch to Light Theme (T)'}
-          >
-            {theme === 'light' ? <Moon size={14} strokeWidth={1.9} /> : <Sun size={14} strokeWidth={1.9} />}
-          </motion.button>
-
-          <motion.button
+          <button
             type="button"
             id="btn-command-palette"
-            className="nav-icon-btn"
-            whileTap={{ scale: 0.95 }}
+            className="nav-ghost-btn nav-search-btn"
             onClick={() => {
               soundEngine.playTick(820);
               onOpenPalette();
             }}
-            aria-label="Open global search & command index"
-            title="Global Search & Command Index (⌘K)"
+            aria-label="Search documentation and commands"
+            title="Search (⌘K)"
           >
-            <Command size={13} strokeWidth={2} />
-            <span className="mono">K</span>
-          </motion.button>
-
-          <motion.button
-            type="button"
-            id="btn-sound-toggle"
-            className={`nav-icon-btn ${soundOn ? 'is-on' : ''}`}
-            whileTap={{ scale: 0.95 }}
-            onClick={onToggleSound}
-            aria-pressed={soundOn}
-            aria-label={soundOn ? 'Mute synthesized audio' : 'Enable synthesized audio'}
-            title={soundOn ? 'Mute sound' : 'Enable subtle tactile audio'}
-          >
-            {soundOn ? <Volume2 size={14} strokeWidth={1.8} /> : <VolumeX size={14} strokeWidth={1.8} />}
-          </motion.button>
-
-          <motion.a
-            href="https://github.com/bhaskarjha-dev/vivechak"
-            target="_blank"
-            rel="noreferrer"
-            className="nav-gh-btn"
-            id="nav-github"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => soundEngine.playTick(700)}
-          >
-            <span>GitHub</span>
-            <ArrowUpRight size={13} strokeWidth={2} />
-          </motion.a>
+            <Search size={14} strokeWidth={1.85} />
+            <span className="nav-kbd mono">⌘K</span>
+          </button>
 
           <button
             type="button"
-            className="nav-icon-btn nav-mobile-btn"
-            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            id="btn-theme-toggle"
+            className="nav-ghost-btn"
+            onClick={onToggleTheme}
+            aria-pressed={theme === 'light'}
+            aria-label={theme === 'light' ? 'Switch to dark theme (T)' : 'Switch to light theme (T)'}
+            title={theme === 'light' ? 'Dark theme (T)' : 'Light theme (T)'}
+          >
+            {theme === 'light' ? <Moon size={15} strokeWidth={1.8} /> : <Sun size={15} strokeWidth={1.8} />}
+          </button>
+
+          <button
+            type="button"
+            id="btn-sound-toggle"
+            className={`nav-ghost-btn ${soundOn ? 'is-on' : ''}`}
+            onClick={onToggleSound}
+            aria-pressed={soundOn}
+            aria-label={soundOn ? 'Mute sound effects' : 'Enable subtle sound effects'}
+            title={soundOn ? 'Mute audio' : 'Enable subtle tactile audio'}
+          >
+            {soundOn ? <Volume2 size={15} strokeWidth={1.8} /> : <VolumeX size={15} strokeWidth={1.8} />}
+          </button>
+
+          <span className="nav-divider" aria-hidden="true" />
+
+          <a
+            href="https://github.com/bhaskarjha-dev/vivechak"
+            target="_blank"
+            rel="noreferrer"
+            className="nav-gh-link"
+            id="nav-github"
+            onClick={() => soundEngine.playTick(700)}
+          >
+            <span>GitHub</span>
+            <ArrowUpRight size={13} strokeWidth={1.9} />
+          </a>
+
+          <button
+            type="button"
+            className="nav-ghost-btn nav-mobile-btn"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
             onClick={() => {
               soundEngine.playTick(720);
               setMobileOpen((v) => !v);
             }}
           >
-            {mobileOpen ? <X size={15} /> : <Menu size={15} />}
+            {mobileOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
         </div>
       </div>
 
-      {/* Sleek Opaque Mobile Dropdown Drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.nav
             className="mobile-drawer"
             aria-label="Mobile navigation"
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14 }}
           >
             <div className="wrap mobile-drawer-inner">
-              <a href="/" className={`mobile-nav-link ${isHome && activeHomeSection === '' ? 'is-active' : ''}`} onClick={go('/')}>
+              <a
+                href="/"
+                className={`mobile-nav-link ${pathname === '/' ? 'is-active' : ''}`}
+                onClick={go('/')}
+              >
                 Overview
               </a>
-              <a href="/#shift" className={`mobile-nav-link ${isHome && activeHomeSection === 'shift' ? 'is-active' : ''}`} onClick={go('/#shift')}>
-                The Shift (Raw Chat vs. Git ADR)
+              <a
+                href="/architecture"
+                className={`mobile-nav-link ${isArchitecture ? 'is-active' : ''}`}
+                onClick={go('/architecture')}
+              >
+                Architecture &amp; Security
               </a>
-              <a href="/#calibrate" className={`mobile-nav-link ${isHome && activeHomeSection === 'calibrate' ? 'is-active' : ''}`} onClick={go('/#calibrate')}>
-                Calibrate (Scope &amp; WEP ±20%)
-              </a>
-              <a href="/#gate" className={`mobile-nav-link ${isHome && activeHomeSection === 'gate' ? 'is-active' : ''}`} onClick={go('/#gate')}>
-                Interactive Phase 0 Gate
-              </a>
-              <a href="/#setup" className="mobile-nav-link" onClick={go('/#setup')}>
-                10-Host Setup &amp; Prompt Builder
+              <a
+                href="/setup"
+                className={`mobile-nav-link ${isSetup ? 'is-active' : ''}`}
+                onClick={go('/setup')}
+              >
+                Install &amp; Setup
               </a>
               <a
                 href="/playground"
                 className={`mobile-nav-link ${isPlayground ? 'is-active' : ''}`}
                 onClick={go('/playground')}
               >
-                Live Playground (ADR Auditor · WEP · Prompt Studio)
+                Playground
               </a>
               <a
                 href="/docs/quickstart"
                 className={`mobile-nav-link ${isDocs ? 'is-active' : ''}`}
                 onClick={go('/docs/quickstart')}
               >
-                Documentation Portal (11 Guides)
+                Documentation
               </a>
               <button
                 type="button"
@@ -331,7 +262,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onOpenReference();
                 }}
               >
-                Quick Reference Cheat Sheet (?)
+                Quick Reference (?)
               </button>
               <a
                 href="https://github.com/bhaskarjha-dev/vivechak"

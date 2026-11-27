@@ -13,7 +13,6 @@ import {
   Lightbulb,
   Menu,
   Search,
-  Sparkles,
   Terminal,
   X,
 } from 'lucide-react';
@@ -246,7 +245,7 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
               <span>{block.label || block.lang.toUpperCase()}</span>
               <button
                 type="button"
-                className={`dock-copy mono ${copiedId === key ? 'copied' : ''}`}
+                className={`inline-action-btn mono ${copiedId === key ? 'copied' : ''}`}
                 onClick={() => void handleCopy(key, block.code, block.label || 'code snippet')}
               >
                 {copiedId === key ? <Check size={12} /> : <Copy size={12} />}
@@ -307,14 +306,14 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
           <div key={key} className="doc-auditor-banner">
             <div className="doc-auditor-copy">
               <div className="doc-auditor-tag mono">
-                <Sparkles size={12} /> INTERACTIVE PLAYGROUND
+                <Terminal size={12} /> INTERACTIVE PLAYGROUND
               </div>
               <strong>{block.label}</strong>
               <p>{block.desc}</p>
             </div>
             <button
               type="button"
-              className="btn-saffron btn-sm"
+              className="btn-primary btn-sm"
               onClick={() => {
                 soundEngine.playSieveDrop();
                 onLaunchAuditorPreset(block.presetId);
@@ -423,8 +422,8 @@ export const DocsPortal: React.FC<DocsPortalProps> = ({
                 navigate('/playground');
               }}
             >
-              <Sparkles size={13} />
-              <span>Open Live Playground →</span>
+              <Terminal size={13} />
+              <span>Open Playground →</span>
             </a>
           </div>
         </aside>

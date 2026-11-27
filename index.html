@@ -7,7 +7,7 @@
     <title>Vivechak &#x2014; Prove Decisions Before Code</title>
     <meta
       name="description"
-      content="Make AI coding agents prove hard architectural decisions with cited research (Grades A-E), red-team SHA-256 checks, and human sign-off — stored locally in plain Git Markdown."
+      content="Local-first Go MCP server and CLI that makes AI coding agents cite primary sources (Grades A–E), stress-test tradeoffs, and earn human sign-off — in plain Git Markdown."
     />
     <meta
       name="keywords"
@@ -15,7 +15,7 @@
     />
     <meta name="author" content="Bhaskar Jha" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-    <meta name="theme-color" content="#050811" />
+    <meta name="theme-color" content="#0A0D14" />
     <script>
       (function () {
         try {
@@ -26,7 +26,7 @@
           document.documentElement.dataset.theme = t;
           document.documentElement.style.colorScheme = t;
           var m = document.querySelector('meta[name="theme-color"]');
-          if (m) m.setAttribute('content', t === 'light' ? '#F4F0E6' : '#050811');
+          if (m) m.setAttribute('content', t === 'light' ? '#F6F3EC' : '#0A0D14');
         } catch (e) {
           document.documentElement.dataset.theme = 'dark';
         }
@@ -43,7 +43,7 @@
     <link rel="icon" href="/assets/logo-dark.svg" media="(prefers-color-scheme: dark)" />
     <link rel="preload" as="image" href="/assets/logo-dark.svg" />
 
-    <!-- OpenGraph / LinkedIn / Slack / WhatsApp / Discord -->
+    <!-- OpenGraph / LinkedIn / Slack / WhatsApp / Discord / iMessage -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Vivechak" />
     <meta property="og:locale" content="en_US" />
@@ -51,14 +51,14 @@
     <meta property="og:title" content="Vivechak &#x2014; Prove Decisions Before Code" />
     <meta
       property="og:description"
-      content="Make AI coding agents prove hard architectural decisions with cited research (Grades A-E), red-team SHA-256 checks, and human sign-off — stored locally in plain Git Markdown."
+      content="Local-first Go MCP server and CLI for evidence-graded architecture research (Grades A–E), red-team SHA-256 verification, and human sign-off in plain Git Markdown."
     />
     <meta property="og:image" content="https://vivechak.bhaskarjha.dev/assets/social-preview.png" />
     <meta property="og:image:secure_url" content="https://vivechak.bhaskarjha.dev/assets/social-preview.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Vivechak — Prove decisions before code. Evidence-graded research, red-teaming, and Phase 0 exit gates for AI coding agents in plain Git Markdown." />
+    <meta property="og:image:alt" content="Vivechak — Prove decisions before code. Local-first Go MCP server and CLI for evidence-graded architecture research and Phase 0 exit gates in Git." />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -66,23 +66,23 @@
     <meta name="twitter:title" content="Vivechak &#x2014; Prove Decisions Before Code" />
     <meta
       name="twitter:description"
-      content="Local-first Go MCP server &amp; CLI for evidence-graded architecture research (Grades A-E), red-team SHA-256 checks, and Phase 0 exit gates in Git."
+      content="Local-first Go MCP server &amp; CLI for evidence-graded architecture research (Grades A–E), red-team SHA-256 checks, and Phase 0 exit gates in plain Git Markdown."
     />
     <meta name="twitter:image" content="https://vivechak.bhaskarjha.dev/assets/social-preview.png" />
-    <meta name="twitter:image:alt" content="Vivechak — Prove decisions before code. Local-first Go MCP server &amp; CLI for evidence-graded technical architecture decisions." />
+    <meta name="twitter:image:alt" content="Vivechak — Prove decisions before code. Local-first Go MCP server and CLI for evidence-graded technical architecture decisions." />
 
-    <!-- Non-Render-Blocking Font Triad: Plus Jakarta Sans (Display) + Inter (UI) + JetBrains Mono -->
+    <!-- Engineered Precision Typography: Geist + Geist Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
     />
     <noscript>
       <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
         rel="stylesheet"
       />
     </noscript>
@@ -112,7 +112,7 @@
             "codeRepository": "https://github.com/bhaskarjha-dev/vivechak",
             "programmingLanguage": "Go",
             "image": "https://vivechak.bhaskarjha.dev/assets/social-preview.png",
-            "description": "Local-first Model Context Protocol (MCP) server and CLI that structures evidence-graded research (A-E), adversarial red-teaming, and mechanical Phase 0 exit gates in plain Git Markdown.",
+            "description": "Local-first Model Context Protocol (MCP) server and CLI that structures evidence-graded research (A–E), adversarial red-teaming, and mechanical Phase 0 exit gates in plain Git Markdown.",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -173,7 +173,7 @@
                 "name": "Can I try Vivechak without installing anything?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. You can run ephemerally via npx -y vivechak serve or uvx vck serve, or generate a self-contained zero-install prompt in the web Playground for Claude, ChatGPT, or Gemini."
+                  "text": "Yes. You can install the standalone Agent Skill (npx skills add bhaskarjha-dev/vivechak), run ephemerally via npx -y vivechak serve or uvx vck serve, or generate a self-contained zero-install prompt in the web Playground for Claude, ChatGPT, or Gemini."
                 }
               },
               {

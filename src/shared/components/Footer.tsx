@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUp, ArrowUpRight, BookOpen } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { navigate } from '@/shared/lib/router';
 import { soundEngine } from '@/shared/lib/sound';
 import type { ThemeMode } from '@/shared/lib/theme';
@@ -10,16 +10,11 @@ interface FooterProps {
 }
 
 const INTERNAL_LINKS = [
-  { label: 'Quickstart', to: '/docs/quickstart' },
-  { label: '3 Scopes', to: '/docs/scopes' },
-  { label: 'Examples', to: '/docs/examples' },
-  { label: 'MCP Reference', to: '/docs/mcp-reference' },
+  { label: 'Architecture', to: '/architecture' },
+  { label: 'Setup', to: '/setup' },
   { label: 'Playground', to: '/playground' },
-];
-
-const EXTERNAL_LINKS = [
-  { label: 'Releases', href: 'https://github.com/bhaskarjha-dev/vivechak/releases' },
-  { label: 'GitHub', href: 'https://github.com/bhaskarjha-dev/vivechak' },
+  { label: 'Docs', to: '/docs/quickstart' },
+  { label: 'Examples', to: '/docs/examples' },
 ];
 
 export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
@@ -30,8 +25,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
           <div className="colophon-id">
             <svg
               viewBox="0 0 512 512"
-              width={36}
-              height={36}
+              width={28}
+              height={28}
               className="nav-logo-svg colophon-logo-svg"
               aria-hidden="true"
             >
@@ -47,16 +42,16 @@ export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
                 <span className="colophon-name">Vivechak</span>
                 <img
                   src="/assets/wordmark-dark.svg"
-                  alt="Vivechak calligraphy wordmark"
-                  width={48}
-                  height={17}
+                  alt="विवेचक"
+                  width={42}
+                  height={15}
                   className="colophon-wm brand-for-dark"
                 />
                 <img
                   src="/assets/wordmark-light.svg"
-                  alt="Vivechak calligraphy wordmark"
-                  width={48}
-                  height={17}
+                  alt="विवेचक"
+                  width={42}
+                  height={15}
                   className="colophon-wm brand-for-light"
                 />
               </div>
@@ -66,7 +61,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
             </div>
           </div>
 
-          <nav className="colophon-links" aria-label="Footer links">
+          <nav className="colophon-links" aria-label="Footer navigation">
             {INTERNAL_LINKS.map((l) => (
               <a
                 key={l.to}
@@ -78,7 +73,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
                   navigate(l.to);
                 }}
               >
-                <span>{l.label}</span>
+                {l.label}
               </a>
             ))}
             <button
@@ -89,33 +84,35 @@ export const Footer: React.FC<FooterProps> = ({ onOpenReference }) => {
                 onOpenReference();
               }}
             >
-              <BookOpen size={12} />
-              <span>Quick Ref</span>
+              Quick Reference
             </button>
-            {EXTERNAL_LINKS.map((l) => (
-              <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className="colophon-link">
-                <span>{l.label}</span>
-                <ArrowUpRight size={12} />
-              </a>
-            ))}
-            <button
-              type="button"
-              className="colophon-link colophon-btn"
-              onClick={() => {
-                soundEngine.playTick(680);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              aria-label="Back to top"
+            <a href="/llms.txt" className="colophon-link">
+              llms.txt
+            </a>
+            <a
+              href="https://github.com/bhaskarjha-dev/vivechak/releases"
+              target="_blank"
+              rel="noreferrer"
+              className="colophon-link"
             >
-              <span>Top</span>
-              <ArrowUp size={12} />
-            </button>
+              Releases
+              <ArrowUpRight size={12} />
+            </a>
+            <a
+              href="https://github.com/bhaskarjha-dev/vivechak"
+              target="_blank"
+              rel="noreferrer"
+              className="colophon-link"
+            >
+              GitHub
+              <ArrowUpRight size={12} />
+            </a>
           </nav>
         </div>
 
-        <div className="colophon-meta mono">
-          <span>MIT LICENSE · © 2026 BHASKAR JHA · SHORTCUTS: ⌘K · T (THEME) · ? (QUICK REF)</span>
-          <span>VIVECHAK.BHASKARJHA.DEV · V0.1.0</span>
+        <div className="colophon-meta">
+          <span>MIT License · © 2026 Bhaskar Jha</span>
+          <span className="colophon-keys mono">⌘K search · T theme · ? reference · v0.1.0</span>
         </div>
       </div>
     </footer>

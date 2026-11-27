@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 export interface RouteState {
   pathname: string;
+  search: string;
   hash: string;
 }
 
@@ -12,18 +13,23 @@ export function normalizePath(raw: string): string {
 }
 
 export function getWindowRoute(): RouteState {
-  if (typeof window === 'undefined') return { pathname: '/', hash: '' };
+  if (typeof window === 'undefined') return { pathname: '/', search: '', hash: '' };
   if (window.location.protocol === 'file:') {
     const ssr = document.getElementById('root')?.dataset.ssrRoute;
-    return { pathname: normalizePath(ssr || '/'), hash: window.location.hash || '' };
+    return {
+      pathname: normalizePath(ssr || '/'),
+      search: window.location.search || '',
+      hash: window.location.hash || '',
+    };
   }
   return {
     pathname: normalizePath(window.location.pathname),
+    search: window.location.search || '',
     hash: window.location.hash || '',
   };
 }
 
-// Resilient cross-route hash scroller (deterministic offset under sticky 62px navbar)
+// Resilient cross-route hash scroller (deterministic offset under sticky 60px navbar)
 function scrollToHashElement(id: string, smooth: boolean, maxMs = 1400): void {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   const start = performance.now();
@@ -35,7 +41,6 @@ function scrollToHashElement(id: string, smooth: boolean, maxMs = 1400): void {
     const el = document.getElementById(id);
     if (el) {
       scrollNow(el, smooth ? 'smooth' : 'instant');
-      // Guard against async layout settlement when jumping across routes into Home
       if (!smooth) {
         window.setTimeout(() => {
           const fresh = document.getElementById(id);
@@ -53,25 +58,40 @@ function scrollToHashElement(id: string, smooth: boolean, maxMs = 1400): void {
 
 export function navigate(to: string): void {
   if (typeof window === 'undefined') return;
-  const [rawPath, rawHash] = to.split('#');
+  const [beforeHash, rawHash] = to.split('#');
+  const [rawPath, rawSearch] = beforeHash.split('?');
   const nextPath = normalizePath(rawPath || '/');
+  const nextSearch = rawSearch ? `?${rawSearch}` : '';
   const nextHash = rawHash ? `#${rawHash}` : '';
-  const targetUrl = nextPath + nextHash;
+  const targetUrl = nextPath + nextSearch + nextHash;
 
   const currentPath =
     window.location.protocol === 'file:' ? '/' : normalizePath(window.location.pathname);
   const samePath = currentPath === nextPath;
+  const sameSearch = window.location.search === nextSearch;
 
-  if (!samePath) {
+  if (!samePath || !sameSearch) {
     window.history.pushState({}, '', targetUrl);
     window.dispatchEvent(new PopStateEvent('popstate'));
   } else if (nextHash && window.location.hash !== nextHash) {
     window.history.pushState({}, '', targetUrl);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   } else if (!nextHash && window.location.hash) {
-    window.history.pushState({}, '', nextPath);
+    window.history.pushState({}, '', nextPath + nextSearch);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   }
 
-  if (nextHash) {
+  // Only auto-scroll for DOM anchor hashes (not playground tab/state hashes)
+  const isStateHash =
+    nextPath === '/playground' &&
+    (nextHash === '#auditor' ||
+      nextHash === '#scope' ||
+      nextHash === '#wep' ||
+      nextHash === '#prompt' ||
+      nextHash.startsWith('#wep=') ||
+      nextHash.startsWith('#prompt='));
+
+  if (nextHash && !isStateHash) {
     scrollToHashElement(nextHash.slice(1), samePath);
   } else {
     window.scrollTo({ top: 0, behavior: samePath ? 'smooth' : ('instant' as ScrollBehavior) });
@@ -81,7 +101,7 @@ export function navigate(to: string): void {
 export function useRoute(initialPath = '/'): RouteState {
   const [route, setRoute] = useState<RouteState>(() =>
     typeof window === 'undefined'
-      ? { pathname: normalizePath(initialPath), hash: '' }
+      ? { pathname: normalizePath(initialPath), search: '', hash: '' }
       : getWindowRoute()
   );
 

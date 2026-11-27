@@ -1,20 +1,11 @@
 /* ==========================================================================
-   VIVECHAK DESIGN TOKENS — Architectural Precision & Dual-Material Craft
-   Anchored strictly to docs/BRAND.md:
+   VIVECHAK DESIGN TOKENS — Architectural Monograph & Precision Instrument
+   Canonical Brand Palette (docs/BRAND.md):
      Ink Indigo #12203F · Saffron Truth #F2A33A · Warm Paper #F7F4EC
    ========================================================================== */
 
 @font-face {
-  font-family: 'Plus Jakarta Display Fallback';
-  src: local('Helvetica Neue'), local('Arial'), local('DejaVu Sans');
-  size-adjust: 100%;
-  ascent-override: 97%;
-  descent-override: 25%;
-  line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: 'Inter UI Fallback';
+  font-family: 'Geist Fallback';
   src: local('Helvetica Neue'), local('Arial'), local('DejaVu Sans');
   size-adjust: 100%;
   ascent-override: 96%;
@@ -23,55 +14,171 @@
 }
 
 :root {
-  --ink-indigo: #12203f;
-  --saffron: #f2a33a;
-  --saffron-bright: #ffbe63;
-  --saffron-deep: #b86c08;
-  --saffron-ink: #8b4c02;
+  /* Canonical Brand Constants */
+  --brand-indigo: #12203f;
+  --brand-saffron: #f2a33a;
+  --brand-paper: #f7f4ec;
 
-  /* Calibrated Obsidian Dark Surfaces (Quiet Architectural Elevation Steps) */
-  --void: #050811;
-  --obsidian: #070c18;
-  --chamber: #050914;
-  --surface-dark: #0b1222;
-  --surface-code: #070d1b;
+  /* Semantic Surfaces — Dark Theme ("Obsidian Ink") */
+  --bg: #0a0d14;
+  --bg-alt: #0d111a;
+  --bg-elevated: #111622;
+  --bg-subtle: rgba(245, 242, 234, 0.032);
+  --bg-hover: rgba(245, 242, 234, 0.062);
+  --bg-code: #080b11;
+  --bg-terminal: #070a10;
+  --bg-header: rgba(10, 13, 20, 0.84);
+  --bg-backdrop: rgba(5, 7, 12, 0.72);
 
-  /* Warm Archival Paper Surfaces */
-  --paper: #f4f0e6;
-  --paper-warm: #ebe4d5;
-  --paper-card: #faf8f2;
-  --paper-ink: #12203f;
-  --paper-soft: #43506b;
-  --paper-muted: #68738a;
-  --paper-border: rgba(18, 32, 63, 0.12);
-  --paper-border-strong: rgba(18, 32, 63, 0.24);
+  /* Semantic Ink */
+  --fg: #f5f2ea;
+  --fg-secondary: #a4aec0;
+  --fg-muted: #6e7a8f;
+  --fg-faint: #4c566a;
+  --fg-code: #d8e0ef;
 
-  /* Dark Surface Text & Hairlines */
-  --ink-light: #f7f4ec;
-  --ink-soft: #a8b5ce;
-  --ink-muted: #70809e;
-  --ink-secondary: #c4d0e4;
-  --border-dark: rgba(247, 244, 236, 0.085);
-  --border-dark-strong: rgba(247, 244, 236, 0.165);
+  /* Primary Action (Quiet Authority — Warm Paper on Obsidian) */
+  --btn-primary-bg: #f5f2ea;
+  --btn-primary-fg: #0a0d14;
+  --btn-primary-hover: #ffffff;
 
-  /* Semantic Telemetry */
-  --pass: #25b07f;
-  --pass-ink: #137652;
-  --fail: #e1524a;
-  --fail-ink: #b83029;
+  /* Hairlines & Structural Rules */
+  --border: rgba(245, 242, 234, 0.085);
+  --border-strong: rgba(245, 242, 234, 0.16);
+  --border-hover: rgba(245, 242, 234, 0.26);
 
-  /* Typography — Architectural Neo-Grotesk Display + Precision UI + Tabular Mono */
-  --font-display: 'Plus Jakarta Sans', 'Plus Jakarta Display Fallback', system-ui, -apple-system, sans-serif;
-  --font-serif: var(--font-display);
-  --font-sans: 'Inter', 'Inter UI Fallback', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Surgical Saffron Accent */
+  --accent: #f2a33a;
+  --accent-text: #f3b55a;
+  --accent-soft: rgba(242, 163, 58, 0.1);
+  --accent-border: rgba(242, 163, 58, 0.34);
 
-  /* Precision Radii */
+  /* Editorial Semantic Status (Restrained, Never Neon) */
+  --pass: #2ea877;
+  --pass-text: #59cfa0;
+  --pass-soft: rgba(46, 168, 119, 0.1);
+  --pass-border: rgba(46, 168, 119, 0.3);
+
+  --fail: #d9574f;
+  --fail-text: #ef8a84;
+  --fail-soft: rgba(217, 87, 79, 0.095);
+  --fail-border: rgba(217, 87, 79, 0.3);
+
+  --info-text: #8bbcf4;
+  --info-soft: rgba(139, 188, 244, 0.09);
+  --info-border: rgba(139, 188, 244, 0.28);
+
+  /* Syntax Tokens (Dark) */
+  --tok-delim: #637089;
+  --tok-key: #8ab8ec;
+  --tok-val: #91d5a8;
+  --tok-num: #f2bc6d;
+  --tok-punct: #76839b;
+  --tok-heading: #f3ba64;
+  --tok-fence: #798aa8;
+  --tok-comment: #6e7b93;
+  --tok-table: #c3cfe2;
+  --tok-grade-bg: rgba(242, 163, 58, 0.18);
+  --tok-grade-fg: #f7c572;
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 14px 36px -18px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 28px 64px -26px rgba(0, 0, 0, 0.78);
+
+  /* Engineered Technical Typography */
+  --font-display: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Geometry */
+  --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
   --r-pill: 999px;
 
-  --max-w: 1180px;
+  --max-w: 1120px;
   --nav-h: 60px;
+
+  /* Legacy aliases kept for backwards safety across secondary rules */
+  --saffron: var(--accent);
+  --saffron-bright: var(--accent-text);
+  --ink-light: var(--fg);
+  --ink-soft: var(--fg-secondary);
+  --ink-muted: var(--fg-muted);
+  --void: var(--bg);
+  --obsidian: var(--bg-alt);
+  --chamber: var(--bg);
+  --surface-dark: var(--bg-elevated);
+  --surface-code: var(--bg-code);
+  --border-dark: var(--border);
+  --border-dark-strong: var(--border-strong);
+}
+
+/* ==========================================================================
+   DUAL-MATERIAL LIGHT THEME — "Archival Paper & Ink Indigo"
+   ========================================================================== */
+html[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f6f3ec;
+  --bg-alt: #f0ece2;
+  --bg-elevated: #fcfbf8;
+  --bg-subtle: rgba(18, 32, 63, 0.032);
+  --bg-hover: rgba(18, 32, 63, 0.062);
+  --bg-code: #f1ede4;
+  --bg-terminal: #121722;
+  --bg-header: rgba(246, 243, 236, 0.88);
+  --bg-backdrop: rgba(18, 32, 63, 0.36);
+
+  --fg: #12203f;
+  --fg-secondary: #43506a;
+  --fg-muted: #6c778e;
+  --fg-faint: #9aa3b5;
+  --fg-code: #1f2e4d;
+
+  --btn-primary-bg: #12203f;
+  --btn-primary-fg: #fcfbf8;
+  --btn-primary-hover: #1d315c;
+
+  --border: rgba(18, 32, 63, 0.1);
+  --border-strong: rgba(18, 32, 63, 0.18);
+  --border-hover: rgba(18, 32, 63, 0.3);
+
+  --accent: #c7760d;
+  --accent-text: #965204;
+  --accent-soft: rgba(199, 118, 13, 0.09);
+  --accent-border: rgba(199, 118, 13, 0.32);
+
+  --pass: #157a54;
+  --pass-text: #106344;
+  --pass-soft: rgba(21, 122, 84, 0.085);
+  --pass-border: rgba(21, 122, 84, 0.28);
+
+  --fail: #be3830;
+  --fail-text: #9f2922;
+  --fail-soft: rgba(190, 56, 48, 0.075);
+  --fail-border: rgba(190, 56, 48, 0.26);
+
+  --info-text: #1c4c8a;
+  --info-soft: rgba(28, 76, 138, 0.075);
+  --info-border: rgba(28, 76, 138, 0.24);
+
+  /* Syntax Tokens (Archival Paper Light) */
+  --tok-delim: #838ea3;
+  --tok-key: #1b4a8c;
+  --tok-val: #156b49;
+  --tok-num: #9b5406;
+  --tok-punct: #6b768c;
+  --tok-heading: #965204;
+  --tok-fence: #6a768e;
+  --tok-comment: #7b859a;
+  --tok-table: #2d3c59;
+  --tok-grade-bg: rgba(199, 118, 13, 0.14);
+  --tok-grade-fg: #874802;
+
+  --shadow-sm: 0 1px 2px rgba(18, 32, 63, 0.05);
+  --shadow-md: 0 14px 34px -18px rgba(18, 32, 63, 0.14);
+  --shadow-lg: 0 28px 56px -24px rgba(18, 32, 63, 0.18);
 }

@@ -54,8 +54,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     };
 
     return [
-      { id: 'pg-home', group: 'Page', label: 'Overview — Hero & 3D Epistemic Sieve', hint: '/', action: goTo('/') },
+      { id: 'pg-home', group: 'Page', label: 'Overview — Hero, Before/After & Live Gate', hint: '/', action: goTo('/') },
+      { id: 'pg-arch', group: 'Page', label: 'Architecture — Session DAG, Git Files, MCP & Security', hint: '/architecture', action: goTo('/architecture') },
+      { id: 'pg-setup', group: 'Page', label: 'Setup — 13 Installers, 10 MCP Hosts, CI & FAQ', hint: '/setup', action: goTo('/setup') },
       { id: 'pg-play', group: 'Playground', label: 'Live ADR & Phase 0 Gate Auditor (In-Browser)', hint: '/playground', action: goTo('/playground') },
+      { id: 'pg-scope', group: 'Playground', label: 'Scope Classifier & R/N/B/X Risk Profiler', hint: '/playground#scope', action: goTo('/playground#scope') },
+      { id: 'pg-wep', group: 'Playground', label: 'WEP ±20% Sensitivity Matrix Builder', hint: '/playground#wep', action: goTo('/playground#wep') },
+      { id: 'pg-prompt', group: 'Playground', label: 'Zero-Install Prompt Studio', hint: '/playground#prompt', action: goTo('/playground#prompt') },
       ...DOC_PAGES.map((p) => ({
         id: `doc-${p.slug}`,
         group: 'Docs',
@@ -103,11 +108,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           onClose();
         },
       },
-      { id: 'n-shift', group: 'Home', label: '01 · Before vs. After (4 Real Scenarios)', hint: '/#shift', action: goTo('/#shift') },
-      { id: 'n-cal', group: 'Home', label: '02 · Scope Calibrator & WEP ±20% Lab', hint: '/#calibrate', action: goTo('/#calibrate') },
-      { id: 'n-gate', group: 'Home', label: '03 · Live Phase 0 Exit Gate & TTY Sign-Off', hint: '/#gate', action: goTo('/#gate') },
-      { id: 'n-arch', group: 'Home', label: '04 · Live SVG DAG, Git Files & 9 MCP Tools', hint: '/#architecture', action: goTo('/#architecture') },
-      { id: 'n-setup', group: 'Home', label: '05 · 10 Verified Hosts & Prompt Builder', hint: '/#setup', action: goTo('/#setup') },
+      { id: 'n-shift', group: 'Home', label: 'Before vs. After (4 Real Scenarios)', hint: '/#shift', action: goTo('/#shift') },
+      { id: 'n-gate', group: 'Home', label: 'Live Phase 0 Exit Gate & TTY Sign-Off', hint: '/#gate', action: goTo('/#gate') },
       { id: 'c-curl', group: 'Install', label: 'Copy macOS / Linux curl installer', hint: 'install.sh', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'shell')?.command ?? INSTALL_CHANNELS[0].command, 'curl installer') },
       { id: 'c-brew', group: 'Install', label: 'Copy Homebrew cask command', hint: 'brew', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'brew')?.command ?? INSTALL_CHANNELS[1].command, 'brew command') },
       { id: 'c-npx', group: 'Install', label: 'Copy zero-install npx vivechak serve', hint: 'npx', action: copy(INSTALL_CHANNELS.find((c) => c.id === 'npx')?.command ?? 'npx -y vivechak serve', 'npx serve') },
@@ -121,9 +123,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       ...HOST_PRESETS.map((h) => ({
         id: `h-${h.id}`,
         group: 'Host',
-        label: `vck setup ${h.shortcut} (${h.name})`,
-        hint: h.serverKey,
-        action: copy(`vck setup ${h.shortcut}`, `vck setup ${h.shortcut}`),
+        label: `Configure ${h.name} (vck setup ${h.shortcut})`,
+        hint: `/setup?host=${h.id}`,
+        action: goTo(`/setup?host=${h.id}`),
       })),
       ...DOC_SEARCH_INDEX.map((entry) => ({
         id: entry.id,
